@@ -11,6 +11,16 @@ Device::Device(int width, int height)
 {
 }
 
+Device::~Device()
+{
+	m_context->Flush();
+	DestroySwapchainResources();
+	m_swapChain.Reset();
+	m_dxgiFactory.Reset();
+	m_context.Reset();
+	m_device.Reset();
+}
+
 bool Device::Initialize()
 {
 	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgiFactory))))

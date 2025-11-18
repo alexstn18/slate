@@ -27,6 +27,9 @@
     <ClCompile Include="source\device.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\shader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\application.hpp">
@@ -41,5 +44,12 @@
     <ClInclude Include="include\device.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\shader.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="shaders\triangle_vs.hlsl" />
+    <FxCompile Include="shaders\triangle_ps.hlsl" />
   </ItemGroup>
 </Project>

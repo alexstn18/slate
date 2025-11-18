@@ -13,10 +13,13 @@ namespace slate
 	{
 	public:
 		Device(int width, int height);
+		~Device();
 		bool Initialize();
 		bool OnResizeEvent();
 		void Render();
 
+		[[nodiscard]] ComPtr<ID3D11Device> GetDevice() const { return m_device; }
+		[[nodiscard]] ComPtr<ID3D11DeviceContext> GetContext() const { return m_context; }
 		[[nodiscard]] glm::vec4 GetClearColor() const { return m_clearColor; }
 		void SetClearColor(const glm::vec4& clearColor) { m_clearColor = clearColor; }
 	private:
