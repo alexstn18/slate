@@ -43,5 +43,21 @@ namespace slate::log
         printf("\n");
         assert(false);
     }
+
+    inline void ThrowIfFailed(HRESULT hr)
+    {
+        if (FAILED(hr))
+        {
+            char* hrCstr = nullptr;
+            FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                nullptr,
+                hr,
+                0,
+                (LPSTR)&hrCstr,
+                0,
+                nullptr);
+            Critical("HRESULT Error: {0}", hrCstr);
+        }
+    }
 }
 
