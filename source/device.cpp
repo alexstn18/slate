@@ -141,6 +141,17 @@ ComPtr<ID3D12CommandAllocator> Device::CreateCommandAllocator(D3D12_COMMAND_LIST
 	return allocator;
 }
 
+ComPtr<ID3D12GraphicsCommandList> Device::CreateCommandList(ComPtr<ID3D12CommandAllocator> allocator, D3D12_COMMAND_LIST_TYPE type)
+{
+	ComPtr<ID3D12GraphicsCommandList> commandList;
+
+	log::ThrowIfFailed(m_device->CreateCommandList(0, type, allocator.Get(), nullptr, IID_PPV_ARGS(&commandList));
+
+	log::ThrowIfFailed(commandList->Close());
+
+	return commandList;
+}
+
 // rtv describes the resource that receives the final color computed by the pixel/fragment shader stage
 // for each back buffer of the swap chain, a single rtv is used to describe the resource
 void Device::UpdateRenderTargetViews()

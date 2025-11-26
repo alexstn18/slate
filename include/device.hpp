@@ -28,6 +28,8 @@ namespace slate
 		void CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type);
 		void CreateSwapChain(HWND hWnd, uint32_t bufferCount);
 		void CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors);
+		ComPtr<ID3D12CommandAllocator> CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE type);
+		ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12CommandAllocator> allocator, D3D12_COMMAND_LIST_TYPE type);
 		void UpdateRenderTargetViews();
 		bool CheckForTearingSupport();
 		bool CreateSwapchainResources();
