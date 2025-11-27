@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "device.hpp"
 #include "application.hpp"
 #include "window.hpp"
@@ -6,8 +7,8 @@
 using namespace slate;
 
 Device::Device(int width, int height)
-	: m_width{ width }
-	, m_height{ height }
+	: m_width{ uint32_t(width) }
+	, m_height{ uint32_t(height) }
 {
 }
 
@@ -32,9 +33,51 @@ bool Device::OnResizeEvent()
 	return true;
 }
 
+void Device::Update()
+{
+	static uint64_t frameCounter = 0;
+	static double elapsedSeconds = 0.0;
+	static std::chrono::high_resolution_clock clock;
+	static auto t0 = clock.now();
+
+	frameCounter++;
+	auto t1 = clock.now();;
+	auto deltaTime = t1 - t0;
+	t0 = t1;
+	elapsedSeconds += deltaTime.count() * 1e-9;
+	if(elapsedSeconds > 1.0)
+	{
+		frameCounter = 0;
+		elapsedSeconds = 0.0;
+	}
+}
+
 void Device::Render()
 {
-
+	auto commandAllocator = m_commandAllocators[m_currentBackBufferIndex];
+	auto backBuffer = m_backBuffers[m_currentBackBufferIndex];
+	commandAllocator->Reset();
+	m_commandList->Reset(commandAllocator.Get(), nullptr);
+	{
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		m_commandList->ResourceBarrier(1, &barrier);
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), m_currentBackBufferIndex, m_rtvDescriptorSize);
+		m_commandList->ClearRenderTargetView(rtv, &m_clearColor[0], 0, nullptr);
+	}
+	// Present
+	{
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		m_commandList->ResourceBarrier(1, &barrier);
+		log::ThrowIfFailed(m_commandList->Close());
+		ID3D12CommandList* const commandLists[] = {m_commandList.Get()};
+		m_commandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
+		UINT syncInterval = m_vsync ? 1 : 0;
+		UINT presentFlags = m_tearingSupported && !m_vsync ? DXGI_PRESENT_ALLOW_TEARING : 0;
+		log::ThrowIfFailed(m_swapChain->Present(syncInterval, presentFlags));
+		m_frameFenceValues[m_currentBackBufferIndex] = Signal(m_fence, m_fenceValue);
+		m_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+		WaitForFenceValue(m_fence, m_frameFenceValues[m_currentBackBufferIndex], m_fenceEvent, std::chrono::milliseconds::max());
+	}
 }
 
 void Device::CreateDevice(ComPtr<IDXGIAdapter4> adapter)
@@ -145,11 +188,72 @@ ComPtr<ID3D12GraphicsCommandList> Device::CreateCommandList(ComPtr<ID3D12Command
 {
 	ComPtr<ID3D12GraphicsCommandList> commandList;
 
-	log::ThrowIfFailed(m_device->CreateCommandList(0, type, allocator.Get(), nullptr, IID_PPV_ARGS(&commandList));
+	log::ThrowIfFailed(m_device->CreateCommandList(0, type, allocator.Get(), nullptr, IID_PPV_ARGS(&commandList)));
 
 	log::ThrowIfFailed(commandList->Close());
 
 	return commandList;
+}
+
+// fence = interface for gpu/cpu synchronization
+// used to perform synchronization on either the CPU or GPU
+// for each command queue use a fence
+ComPtr<ID3D12Fence> Device::CreateFence()
+{
+	ComPtr<ID3D12Fence> fence;
+
+	log::ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+
+	return fence;
+}
+
+//  An OS event handle is used to block the CPU thread until the fence has been signaled. 
+// The CreateEventHandle function described next is used to create the OS event.
+// TODO: move to window
+HANDLE Device::CreateEventHandle()
+{
+	HANDLE fenceEvent;
+
+	fenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+	assert(fenceEvent && "Failed to create fence event");
+
+	return fenceEvent;
+}
+
+// Signal the fence from the GPU, the fence is not signaled immediately but it is only signaled once GPU command queue has reached that point during execution
+// Any commands that have been queued before the signal method was invoked 
+uint64_t Device::Signal(ComPtr<ID3D12Fence> fence, uint64_t& fenceValue)
+{
+	uint64_t fenceValueForSignal = ++fenceValue;
+	log::ThrowIfFailed(m_commandQueue->Signal(fence.Get(), fenceValueForSignal));
+
+	return fenceValueForSignal;
+}
+
+// function for when CPU thread will need to stall for the GPU queue to finish executing commands that write to resources being reused
+// e.g. before reusing a swapchain's backbuffer resource, any commands that are using that resource as a render target must be complete before that back buffer resource can be reused.
+// any resources that are never used as a writeable target (for example material textures) do not need to be double buffered and do not require stalling the CPU thread before being reused
+// as read-only resources in a shader.
+// Writeable resources such as render targets do need to be synchronized to protect the resource from being modified by multiple queues at the same time
+// The WaitForFenceValue is used to stall the CPU thread if the fence has not yet reached (been signaled with) a specific value. 
+void Device::WaitForFenceValue(ComPtr<ID3D12Fence> fence, uint64_t fenceValue, HANDLE fenceEvent, std::chrono::milliseconds duration)
+{
+	duration = std::chrono::milliseconds::max();
+
+	if(fence->GetCompletedValue() < fenceValue)
+	{
+		log::ThrowIfFailed(fence->SetEventOnCompletion(fenceValue, fenceEvent));
+		::WaitForSingleObject(fenceEvent, static_cast<DWORD>(duration.count()));
+	}
+}
+
+// flush is used to ensure that any commands previously executed on the GPU have finished executing before the CPU thread is allowed to continue processing. 
+// Useful for ensuring any backbuffer resources being referenced by a command that is currently in-flight on the GPU have finished executing before being resized
+// Advice: Flush the GPU Command Queue before releasing any resources that might be referenced by a command list that is currently in-flight on the command queue (e.g. before closing app)
+void Device::Flush(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Fence> fence, uint64_t& fenceValue, HANDLE fenceEvent)
+{
+	uint64_t fenceValueForSignal = Signal(fence, fenceValue);
+	WaitForFenceValue(fence, fenceValueForSignal, fenceEvent, std::chrono::milliseconds::max());
 }
 
 // rtv describes the resource that receives the final color computed by the pixel/fragment shader stage

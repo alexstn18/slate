@@ -6,6 +6,7 @@
 #include <dxgi1_6.h>
 #include <wrl.h>
 #include <glm/vec4.hpp>
+#include <chrono>
 
 template<typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
@@ -18,6 +19,7 @@ namespace slate
 		~Device();
 		bool Initialize();
 		bool OnResizeEvent();
+		void Update();
 		void Render();
 
 		[[nodiscard]] ComPtr<ID3D12Device2> GetDevice() const { return m_device; }
@@ -30,6 +32,11 @@ namespace slate
 		void CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors);
 		ComPtr<ID3D12CommandAllocator> CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE type);
 		ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12CommandAllocator> allocator, D3D12_COMMAND_LIST_TYPE type);
+		ComPtr<ID3D12Fence> CreateFence();
+		HANDLE CreateEventHandle();
+		uint64_t Signal(ComPtr<ID3D12Fence> fence, uint64_t& fenceValue);
+		void WaitForFenceValue(ComPtr<ID3D12Fence> fence, uint64_t fenceValue, HANDLE fenceEvent, std::chrono::milliseconds duration);
+		void Flush(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Fence> fence, uint64_t& fenceValue, HANDLE fenceEvent);
 		void UpdateRenderTargetViews();
 		bool CheckForTearingSupport();
 		bool CreateSwapchainResources();
