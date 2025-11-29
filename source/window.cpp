@@ -86,6 +86,11 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 {
 	switch (uMsg)
 	{
+		case WM_PAINT:
+		{
+			ValidateRect(hWnd, nullptr);
+			break;
+		}
 		case WM_KEYDOWN:
 		{
 			switch (wParam)
@@ -98,12 +103,13 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 			}
 			break;
 		}
-		// TODO: fix (crashes on flush, first call in onresizevent func call)
-		//case WM_SIZE:
-		//{
-		//	App.Device().OnResizeEvent();
-		//	break;
-		//}
+		case WM_SIZE:
+		{
+			m_width = LOWORD(lParam);
+			m_height = HIWORD(lParam);
+			// TODO: add resize later
+			break;
+		}
 		case WM_SYSCOMMAND:
 		{
 			switch (wParam)
@@ -114,6 +120,12 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 					return 0;
 				}
 			}
+			break;
+		}
+		case WM_DESTROY:
+		{
+			PostQuitMessage(0);
+			m_shouldClose = true;
 			break;
 		}
 		case WM_CLOSE:

@@ -17,8 +17,8 @@ void Application::Initialize()
 	if (m_window->Initialize()) log::Info("Win32 API Window has been initialized successfully!");
 	else log::Critical("Win32 API Window has failed initialization.");
 
-	if (m_device->Initialize()) log::Info("D3D11 Device has been initialized successfully!");
-	else log::Critical("D3D11 Device has failed initialization.");
+	if (m_device->Initialize()) log::Info("D3D12 Device has been initialized successfully!");
+	else log::Critical("D3D12 Device has failed initialization.");
 }
 
 void Application::Run()
@@ -26,6 +26,7 @@ void Application::Run()
 	while (!m_window->ShouldClose())
 	{
 		m_window->ProcessMessages();
+		m_device->Update();
 		m_device->Render();
 	}
 }
@@ -34,6 +35,7 @@ void Application::Shutdown()
 {
 	if (m_window->ShouldClose())
 	{
+		delete m_device;
 		delete m_window;
 	}
 }

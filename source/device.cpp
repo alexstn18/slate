@@ -4,6 +4,10 @@
 #include "window.hpp"
 #include "log.hpp"
 
+#if defined(_DEBUG)
+#include <dxgidebug.h>
+#endif
+
 using namespace slate;
 
 Device::Device(int width, int height)
@@ -14,19 +18,83 @@ Device::Device(int width, int height)
 
 Device::~Device()
 {
-	//m_context->Flush();
-	//DestroySwapchainResources();
-	//m_swapChain.Reset();
-	//m_dxgiFactory.Reset();
-	//m_context.Reset();
-	//m_device.Reset();
+	log::Info("Device destructor - flushing GPU...");
+	Flush(m_commandQueue, m_fence, m_fenceValue, m_fenceEvent);
+
+	log::Info("Device destructor - cleaning up resources...");
+	for (int i = 0; i < m_numFrames; ++i)
+	{
+		m_commandAllocators[i].Reset();
+		m_backBuffers[i].Reset();
+	}
+
+	m_commandList.Reset();
+	m_commandQueue.Reset();
+	m_rtvDescriptorHeap.Reset();
+	m_fence.Reset();
+	m_swapChain.Reset();
+	m_dxgiFactory.Reset();
+	m_device.Reset();
+
+#if defined(_DEBUG)
+	ComPtr<IDXGIDebug1> dxgiDebug;
+	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
+	{
+		log::Info("Reporting live D3D12 objects...");
+		log::ThrowIfFailed(dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_SUMMARY | DXGI_DEBUG_RLO_IGNORE_INTERNAL)));
+	}
+#endif
+	log::Info("Device destroyed successfully");
 }
 
 bool Device::Initialize()
 {
+	log::Info("Initializing D3D12 Device...");
+	EnableDebugLayer();
+	log::Info("Getting GPU adapter...");
+	ComPtr<IDXGIAdapter4> adapter = GetAdapter(false);
+	if (!adapter)
+	{
+		log::Error("Failed to get GPU adapter");
+		return false;
+	}
+	log::Info("Creating D3D12 device...");
+	CreateDevice(adapter);
+	log::Info("Creating command queue...");
+	CreateCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
+	HWND hWnd = App.Window().GetHandle();
+	if (!hWnd)
+	{
+		log::Error("Failed to get window handle");
+		return false;
+	}
+	log::Info("Creating swap chain...");
+	CreateSwapChain(hWnd, m_numFrames);
+	m_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+	log::Info("Current back buffer index: {}", m_currentBackBufferIndex);
+	log::Info("Creating RTV descriptor heap...");
+	CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_numFrames);
+	m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	log::Info("RTV descriptor size: {}", m_rtvDescriptorSize);
+	log::Info("Updating render target views...");
+	UpdateRenderTargetViews();
+	log::Info("Creating command allocators...");
+	for (int i = 0; i < m_numFrames; ++i)
+	{
+		m_commandAllocators[i] = CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT);
+		log::Info("Command allocator {} created", i);
+	}
+	log::Info("Creating command list...");
+	m_commandList = CreateCommandList(m_commandAllocators[m_currentBackBufferIndex], D3D12_COMMAND_LIST_TYPE_DIRECT);
+	log::Info("Creating fence...");
+	m_fence = CreateFence();
+	log::Info("Creating fence event handle...");
+	m_fenceEvent = CreateEventHandle();
+	log::Info("D3D12 Device initialized successfully!");
 	return true;
 }
 
+// TODO: implement later
 bool Device::OnResizeEvent()
 {
 
@@ -45,7 +113,7 @@ void Device::Update()
 	auto deltaTime = t1 - t0;
 	t0 = t1;
 	elapsedSeconds += deltaTime.count() * 1e-9;
-	if(elapsedSeconds > 1.0)
+	if (elapsedSeconds > 1.0)
 	{
 		frameCounter = 0;
 		elapsedSeconds = 0.0;
@@ -66,10 +134,10 @@ void Device::Render()
 	}
 	// Present
 	{
-		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 		m_commandList->ResourceBarrier(1, &barrier);
 		log::ThrowIfFailed(m_commandList->Close());
-		ID3D12CommandList* const commandLists[] = {m_commandList.Get()};
+		ID3D12CommandList* const commandLists[] = { m_commandList.Get() };
 		m_commandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 		UINT syncInterval = m_vsync ? 1 : 0;
 		UINT presentFlags = m_tearingSupported && !m_vsync ? DXGI_PRESENT_ALLOW_TEARING : 0;
@@ -89,6 +157,8 @@ void Device::CreateDevice(ComPtr<IDXGIAdapter4> adapter)
 	ComPtr<ID3D12InfoQueue> pInfoQueue;
 	if (SUCCEEDED(m_device.As(&pInfoQueue)))
 	{
+		log::Info("Debug layer enabled - configuring message filters...");
+
 		// SetBreakOnSeverity sets a message severity level to break on with a debugger
 		// when a messages with that severity passes through the storage filter
 		pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE); // memory corruption
@@ -101,8 +171,8 @@ void Device::CreateDevice(ComPtr<IDXGIAdapter4> adapter)
 			// If you want to clear a render target using an arbitrary clear color, you should disable this warning.
 			D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
 			// These warnings occur when a frame is captured using the graphics debugger integrated in Visual Studio. 
-			// Since I think this bug will never be fixed in the debugger, it’s best to just ignore this warning.
-			D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE, 
+			// Since I think this bug will never be fixed in the debugger, it's best to just ignore this warning.
+			D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
 			D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE, };
 		D3D12_INFO_QUEUE_FILTER NewFilter = {};
 		NewFilter.DenyList.NumSeverities = _countof(Severities);
@@ -110,6 +180,7 @@ void Device::CreateDevice(ComPtr<IDXGIAdapter4> adapter)
 		NewFilter.DenyList.NumIDs = _countof(DenyIds);
 		NewFilter.DenyList.pIDList = DenyIds;
 		log::ThrowIfFailed(pInfoQueue->PushStorageFilter(&NewFilter));
+		log::Info("Debug message filters configured");
 	}
 #endif
 }
@@ -123,6 +194,7 @@ void Device::CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type)
 	desc.NodeMask = 0;
 
 	log::ThrowIfFailed(m_device->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_commandQueue)));
+	log::Info("Command queue created successfully");
 }
 
 void Device::CreateSwapChain(HWND hWnd, uint32_t bufferCount)
@@ -134,24 +206,29 @@ void Device::CreateSwapChain(HWND hWnd, uint32_t bufferCount)
 #endif
 
 	log::ThrowIfFailed(CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS(&dxgiFactory4)));
+	log::Info("DXGI Factory created");
 
 	DXGI_SWAP_CHAIN_DESC1 scd = {};
 	scd.Width = m_width;
 	scd.Height = m_height;
 	scd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	scd.Stereo = FALSE;
-	scd.SampleDesc = {1, 0}; // This member is valid only with bit-block transfer (bitblt) model swap chains. When using flip model swap chain, this member must be specified as {1, 0}.
+	scd.SampleDesc = { 1, 0 }; // This member is valid only with bit-block transfer (bitblt) model swap chains. When using flip model swap chain, this member must be specified as {1, 0}.
 	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // can also be used for shader input
 	scd.BufferCount = bufferCount;
 	scd.Scaling = DXGI_SCALING_STRETCH;
 	scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	scd.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-	scd.Flags = CheckForTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+
+	m_tearingSupported = CheckForTearingSupport();
+	scd.Flags = m_tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+	log::Info("Tearing support: {}", m_tearingSupported ? "enabled" : "disabled");
 
 	ComPtr<IDXGISwapChain1> swapChain1;
 	log::ThrowIfFailed(dxgiFactory4->CreateSwapChainForHwnd(m_commandQueue.Get(), hWnd, &scd, nullptr, nullptr, &swapChain1));
 	log::ThrowIfFailed(dxgiFactory4->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER)); // disable alt + enter
 	log::ThrowIfFailed(swapChain1.As(&m_swapChain));
+	log::Info("Swap chain created successfully with {} buffers", bufferCount);
 }
 
 // descriptor heap = array of resource views
@@ -240,7 +317,7 @@ void Device::WaitForFenceValue(ComPtr<ID3D12Fence> fence, uint64_t fenceValue, H
 {
 	duration = std::chrono::milliseconds::max();
 
-	if(fence->GetCompletedValue() < fenceValue)
+	if (fence->GetCompletedValue() < fenceValue)
 	{
 		log::ThrowIfFailed(fence->SetEventOnCompletion(fenceValue, fenceEvent));
 		::WaitForSingleObject(fenceEvent, static_cast<DWORD>(duration.count()));
@@ -290,17 +367,6 @@ bool Device::CheckForTearingSupport()
 	}
 
 	return allowTearing == TRUE;
-}
-
-bool Device::CreateSwapchainResources()
-{
-
-	return true;
-}
-
-void Device::DestroySwapchainResources()
-{
-
 }
 
 void Device::EnableDebugLayer()

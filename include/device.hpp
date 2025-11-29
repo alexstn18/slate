@@ -39,8 +39,6 @@ namespace slate
 		void Flush(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Fence> fence, uint64_t& fenceValue, HANDLE fenceEvent);
 		void UpdateRenderTargetViews();
 		bool CheckForTearingSupport();
-		bool CreateSwapchainResources();
-		void DestroySwapchainResources();
 		void EnableDebugLayer();
 		ComPtr<IDXGIAdapter4> GetAdapter(bool useWarp);
 
