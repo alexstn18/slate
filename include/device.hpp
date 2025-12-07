@@ -5,8 +5,16 @@
 
 #include <dxgi1_6.h>
 #include <wrl.h>
+#include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 #include <chrono>
+
+struct Vertex
+{
+	glm::vec3 Position;
+	glm::vec4 Color;
+};
 
 template<typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
@@ -34,6 +42,11 @@ namespace slate
 		ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12CommandAllocator> allocator, D3D12_COMMAND_LIST_TYPE type);
 		ComPtr<ID3D12Fence> CreateFence();
 		HANDLE CreateEventHandle();
+		void CreateRootSignature();
+		void CompileTriangleShaders();
+		void CreateVertexBuffer();
+		void CreateDepthStencil();
+
 		uint64_t Signal(ComPtr<ID3D12Fence> fence, uint64_t& fenceValue);
 		void WaitForFenceValue(ComPtr<ID3D12Fence> fence, uint64_t fenceValue, HANDLE fenceEvent, std::chrono::milliseconds duration);
 		void Flush(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Fence> fence, uint64_t& fenceValue, HANDLE fenceEvent);
@@ -70,11 +83,24 @@ namespace slate
 		// descriptor describes a resource and a descriptor is needed to describe each back buf tex
 		// size of descriptor is GPU vendor specific 
 		ComPtr<ID3D12DescriptorHeap> m_rtvDescriptorHeap{ nullptr }; // used to store the descriptor heap that contains the render target views for the swapchain back bufs
+		ComPtr<ID3D12DescriptorHeap> m_DSVHeap{ nullptr }; // depth stencil view 
+
+		ComPtr<ID3D12RootSignature> m_rootSignature{ nullptr };
+		ComPtr<ID3D12PipelineState> m_pipelineState{ nullptr };
+
+		ComPtr<ID3D12Resource> m_vertexBuffer{ nullptr };
+		ComPtr<ID3D12Resource> m_indexBuffer{ nullptr };
+		ComPtr<ID3D12Resource> m_depthStencilBuffer{ nullptr };
+		D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+		D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+
 		UINT m_rtvDescriptorSize{};
 
 		// current back buf idx depends on the flip model of the swap chain and it may not be sequential
 		UINT m_currentBackBufferIndex{}; // stores the idx of the current back buf of the swapchain 
 
+		CD3DX12_VIEWPORT m_viewport{};
+		CD3DX12_RECT m_scissorRect{};
 		uint32_t m_width{};
 		uint32_t m_height{};
 
@@ -105,5 +131,6 @@ namespace slate
 		bool m_fullscreen{ false };
 
 		glm::vec4 m_clearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
+		glm::mat4 m_mvpMatrix{};
 	};
 }

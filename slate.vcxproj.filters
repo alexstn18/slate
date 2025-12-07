@@ -51,5 +51,6 @@
   <ItemGroup>
     <FxCompile Include="shaders\triangle_vs.hlsl" />
     <FxCompile Include="shaders\triangle_ps.hlsl" />
+    <FxCompile Include="shaders\triangle.hlsl" />
   </ItemGroup>
 </Project>

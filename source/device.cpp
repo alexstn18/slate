@@ -8,11 +8,19 @@
 #include <dxgidebug.h>
 #endif
 
+#include <d3dcompiler.h>
+
+#include <glm/glm.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/transform.hpp>
+
 using namespace slate;
 
 Device::Device(int width, int height)
 	: m_width{ uint32_t(width) }
 	, m_height{ uint32_t(height) }
+	, m_viewport{0.0f, 0.0f, float(width), float(height)}
+	, m_scissorRect{0, 0, LONG(width), LONG(height)}
 {
 }
 
@@ -74,6 +82,9 @@ bool Device::Initialize()
 	log::Info("Current back buffer index: {}", m_currentBackBufferIndex);
 	log::Info("Creating RTV descriptor heap...");
 	CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_numFrames);
+
+	CreateDepthStencil();
+
 	m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	log::Info("RTV descriptor size: {}", m_rtvDescriptorSize);
 	log::Info("Updating render target views...");
@@ -90,7 +101,15 @@ bool Device::Initialize()
 	m_fence = CreateFence();
 	log::Info("Creating fence event handle...");
 	m_fenceEvent = CreateEventHandle();
-	log::Info("D3D12 Device initialized successfully!");
+
+	// Add these three calls here:
+	log::Info("Creating root signature...");
+	CreateRootSignature();
+	log::Info("Compiling triangle shaders and creating PSO...");
+	CompileTriangleShaders();  // This needs the root signature to exist first
+	log::Info("Creating vertex buffer...");
+	CreateVertexBuffer();
+
 	return true;
 }
 
@@ -105,19 +124,38 @@ void Device::Update()
 {
 	static uint64_t frameCounter = 0;
 	static double elapsedSeconds = 0.0;
+	static double totalTime = 0.0;
 	static std::chrono::high_resolution_clock clock;
 	static auto t0 = clock.now();
 
 	frameCounter++;
-	auto t1 = clock.now();;
+	auto t1 = clock.now();
 	auto deltaTime = t1 - t0;
 	t0 = t1;
-	elapsedSeconds += deltaTime.count() * 1e-9;
+
+	double deltaSeconds = deltaTime.count() * 1e-9;
+	elapsedSeconds += deltaSeconds;
+	totalTime += deltaSeconds;
+
 	if (elapsedSeconds > 1.0)
 	{
 		frameCounter = 0;
-		elapsedSeconds = 0.0;
+		elapsedSeconds -= 1.0;
 	}
+
+	float angle = float(totalTime * 90.0f);
+
+	glm::mat4 modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 1.0f, 1.0f));
+
+	glm::vec3 eyePos = glm::vec3(0.0f, 0.0f, -10.0f);
+	glm::vec3 focusPoint = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::mat4 view = glm::lookAtLH(eyePos, focusPoint, up);
+
+	float aspectRatio = float(m_width) / float(m_height);
+	glm::mat4 projection = glm::perspectiveFovLH(glm::radians(45.0f), float(m_width), float(m_height), 0.1f, 100.0f);
+
+	m_mvpMatrix = projection * view * modelMatrix;
 }
 
 void Device::Render()
@@ -127,10 +165,23 @@ void Device::Render()
 	commandAllocator->Reset();
 	m_commandList->Reset(commandAllocator.Get(), nullptr);
 	{
+		m_commandList->SetPipelineState(m_pipelineState.Get());
+		m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+		m_commandList->SetGraphicsRoot32BitConstants(0, sizeof(glm::mat4) / 4, &m_mvpMatrix, 0);
+		m_commandList->RSSetViewports(1, &m_viewport);
+		m_commandList->RSSetScissorRects(1, &m_scissorRect);
 		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		m_commandList->ResourceBarrier(1, &barrier);
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), m_currentBackBufferIndex, m_rtvDescriptorSize);
+		CD3DX12_CPU_DESCRIPTOR_HANDLE dsv(m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
+
+		m_commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 		m_commandList->ClearRenderTargetView(rtv, &m_clearColor[0], 0, nullptr);
+		m_commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr); // 1.0f = DEPTH, can change it? idk
+		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+		m_commandList->IASetIndexBuffer(&m_indexBufferView);
+		m_commandList->DrawIndexedInstanced(36, 1, 0, 0, 0);
 	}
 	// Present
 	{
@@ -295,6 +346,191 @@ HANDLE Device::CreateEventHandle()
 	assert(fenceEvent && "Failed to create fence event");
 
 	return fenceEvent;
+}
+
+void Device::CreateRootSignature()
+{
+	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+
+	CD3DX12_ROOT_PARAMETER1 rootParameter[1];
+	rootParameter[0].InitAsConstants(sizeof(glm::mat4) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
+	rootSignatureDesc.Init_1_1(_countof(rootParameter), rootParameter, 0, nullptr, rootSignatureFlags);
+
+	ComPtr<ID3DBlob> signature;
+	ComPtr<ID3DBlob> error;
+	log::ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc,
+		D3D_ROOT_SIGNATURE_VERSION_1_1, &signature, &error));
+
+	log::ThrowIfFailed(m_device->CreateRootSignature(0,
+		signature->GetBufferPointer(),
+		signature->GetBufferSize(),
+		IID_PPV_ARGS(&m_rootSignature)));
+}
+
+void Device::CompileTriangleShaders()
+{
+	ComPtr<ID3DBlob> vertexShader{ nullptr };
+	ComPtr<ID3DBlob> pixelShader{ nullptr };
+	UINT compileFlags = 0;
+	
+	log::ThrowIfFailed(D3DCompileFromFile(L"shaders/cube.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
+	log::ThrowIfFailed(D3DCompileFromFile(L"shaders/cube.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+
+	D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+	};
+
+	// create the graphics pipeline state object
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+	psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+	psoDesc.pRootSignature = m_rootSignature.Get();
+	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
+	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
+	D3D12_RASTERIZER_DESC rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK; // backface culling
+	psoDesc.RasterizerState = rasterizerDesc;
+	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	psoDesc.SampleMask = UINT_MAX;
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.NumRenderTargets = 1;
+	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	psoDesc.SampleDesc.Count = 1;
+	log::ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
+}
+
+void Device::CreateVertexBuffer()
+{
+	const float ASPECT_RATIO = static_cast<float>(m_width / m_height);
+	Vertex cubeVertices[] =
+	{
+		// Front - use normal coordinates
+		{ glm::vec3(-1.0f, -1.0f,  1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f,  1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f,  1.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
+		{ glm::vec3(-1.0f,  1.0f,  1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
+		// Back
+		{ glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec4(1.0f, 0.0f, 1.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f, -1.0f), glm::vec4(0.0f, 1.0f, 1.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f, -1.0f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f) },
+		{ glm::vec3(-1.0f,  1.0f, -1.0f), glm::vec4(0.5f, 0.5f, 0.5f, 1.0f) }
+	};
+
+	UINT cubeIndices[] =
+	{
+		// Front face
+		0, 1, 2,
+		2, 3, 0,
+
+		// Back face
+		5, 4, 7,
+		7, 6, 5,
+
+		// Left face
+		4, 0, 3,
+		3, 7, 4,
+
+		// Right face
+		1, 5, 6,
+		6, 2, 1,
+
+		// Top face
+		3, 2, 6,
+		6, 7, 3,
+
+		// Bottom face
+		4, 5, 1,
+		1, 0, 4
+	};
+
+	const UINT vertexBufferSize = sizeof(cubeVertices);
+	const UINT indexBufferSize = sizeof(cubeIndices);
+	CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
+	CD3DX12_RESOURCE_DESC vertexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
+	CD3DX12_RESOURCE_DESC indexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize);
+	log::ThrowIfFailed(m_device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&vertexBufferDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&m_vertexBuffer)));
+
+	UINT8* pVertexDataBegin{};
+	CD3DX12_RANGE readRange(0, 0); // we are not gonna read from this resource on CPU
+	log::ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
+	memcpy(pVertexDataBegin, cubeVertices, sizeof(cubeVertices));
+	m_vertexBuffer->Unmap(0, nullptr);
+
+	log::ThrowIfFailed(m_device->CreateCommittedResource(
+		&heapProps, 
+		D3D12_HEAP_FLAG_NONE, 
+		&indexBufferDesc, 
+		D3D12_RESOURCE_STATE_GENERIC_READ, 
+		nullptr, 
+		IID_PPV_ARGS(&m_indexBuffer)));
+
+	UINT8* pIndexDataBegin{};
+	log::ThrowIfFailed(m_indexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pIndexDataBegin)));
+	memcpy(pIndexDataBegin, cubeIndices, sizeof(cubeIndices));
+	m_indexBuffer->Unmap(0, nullptr);
+
+	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+	m_vertexBufferView.SizeInBytes = vertexBufferSize;
+	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+	m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+	m_indexBufferView.SizeInBytes = indexBufferSize;
+}
+
+void Device::CreateDepthStencil()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+	dsvHeapDesc.NumDescriptors = 1;
+	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	log::ThrowIfFailed(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+
+	D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilDesc = {};
+	depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	depthStencilDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	depthStencilDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+	D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
+	depthOptimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+	depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
+	depthOptimizedClearValue.DepthStencil.Stencil = 0;
+
+	CD3DX12_HEAP_PROPERTIES depthHeapProps(D3D12_HEAP_TYPE_DEFAULT);
+	CD3DX12_RESOURCE_DESC dsvDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, m_width, m_height,
+		1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+
+	log::ThrowIfFailed(m_device->CreateCommittedResource(
+		&depthHeapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&dsvDesc,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE,
+		&depthOptimizedClearValue,
+		IID_PPV_ARGS(&m_depthStencilBuffer)
+	));
+
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsv = {};
+	dsv.Format = DXGI_FORMAT_D32_FLOAT;
+	dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	dsv.Texture2D.MipSlice = 0;
+	dsv.Flags = D3D12_DSV_FLAG_NONE;
+
+	m_device->CreateDepthStencilView(m_depthStencilBuffer.Get(), &dsv, m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
 }
 
 // Signal the fence from the GPU, the fence is not signaled immediately but it is only signaled once GPU command queue has reached that point during execution
