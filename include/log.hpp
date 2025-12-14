@@ -44,6 +44,21 @@ namespace slate::log
         assert(false);
     }
 
+    template<typename... Args>
+    inline void Assert(bool expression, const fmt::format_string<Args...>& fmt, const Args&... args)
+    {
+#if defined(_DEBUG)
+        if (!expression)
+        {
+            printf("[%sassert%s] ", RED, RESET);
+            fmt::print(fmt::runtime(fmt), args...);
+            printf("\n");
+            assert(false);
+        }
+#endif
+    }
+
+
     inline void ThrowIfFailed(HRESULT hr)
     {
         if (FAILED(hr))

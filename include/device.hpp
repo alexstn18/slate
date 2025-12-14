@@ -16,8 +16,6 @@ struct Vertex
 	glm::vec4 Color;
 };
 
-template<typename T>
-using ComPtr = Microsoft::WRL::ComPtr<T>;
 namespace slate
 {
 	class Device

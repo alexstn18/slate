@@ -1,7 +1,7 @@
+#include "pch.hpp"
 #include "application.hpp"
 #include "window.hpp"
 #include "device.hpp"
-#include "log.hpp"
 
 using namespace slate;
 

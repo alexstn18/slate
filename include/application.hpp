@@ -2,9 +2,6 @@
 
 // TODO: add versioning script on source control (that gets updated on push)
 #define SLATE_VERSION "V0.1 - 16/11/25"
-
-#include <cstdint>
-
 namespace slate
 {
 class Window;

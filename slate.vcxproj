@@ -117,6 +117,9 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>include/;external/;external/assimp/include/</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -136,6 +139,9 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>include/;external/;external/assimp/include/</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -145,18 +151,29 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="source\shader.cpp" />
+    <ClCompile Include="source\rendering\fence.cpp" />
+    <ClCompile Include="source\pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="source\rendering\command_queue.cpp" />
+    <ClCompile Include="source\rendering\descriptor_heap.cpp" />
     <ClCompile Include="source\device.cpp" />
     <ClCompile Include="source\application.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\window.cpp" />
+    <ClCompile Include="source\rendering\swap_chain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\rendering\fence.hpp" />
+    <ClInclude Include="include\rendering\command_queue.hpp" />
+    <ClInclude Include="include\rendering\descriptor_heap.hpp" />
     <ClInclude Include="include\device.hpp" />
     <ClInclude Include="include\application.hpp" />
+    <ClInclude Include="include\pch.hpp" />
     <ClInclude Include="include\window.hpp" />
     <ClInclude Include="include\log.hpp" />
-    <ClInclude Include="include\shader.hpp" />
+    <ClInclude Include="include\rendering\swap_chain.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\triangle.hlsl">

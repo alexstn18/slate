@@ -1,8 +1,5 @@
-#define NOMINMAX
-#include "device.hpp"
-#include "application.hpp"
+#include "pch.hpp"
 #include "window.hpp"
-#include "log.hpp"
 
 #if defined(_DEBUG)
 #include <dxgidebug.h>
