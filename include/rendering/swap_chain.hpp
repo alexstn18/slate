@@ -17,7 +17,7 @@ namespace slate
 		DXGI_FORMAT GetFormat() const { return m_Format; }
 		bool IsTearingSupported() const { return m_TearingSupported; }
 
-		ComPtr<IDXGISwapChain4> Get() const { return m_SwapChain; }
+		[[nodiscard]] ComPtr<IDXGISwapChain4> Get() const { return m_SwapChain; }
 	protected:
 		friend class Device;
 	private:

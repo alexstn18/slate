@@ -28,7 +28,7 @@ void CommandQueue::Initialize(D3D12_COMMAND_LIST_TYPE type)
 	log::Info("Command queue created successfully");
 }
 
-uint64_t CommandQueue::ExecuteCommandLists(const std::vector<ID3D12GraphicsCommandList*> cmdList)
+uint64_t CommandQueue::ExecuteCommandLists(const std::vector<ID3D12GraphicsCommandList*>& cmdList)
 {
 	for (auto cmd : cmdList)
 	{

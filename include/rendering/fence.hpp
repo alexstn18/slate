@@ -18,7 +18,7 @@ namespace slate
 		uint64_t GetCurrentValue() const { return m_FenceValue; }
 		bool IsComplete(uint64_t value) const;
 
-		ComPtr<ID3D12Fence> Get() const { return m_Fence; }
+		[[nodiscard]] ComPtr<ID3D12Fence> Get() const { return m_Fence; }
 	protected:
 		friend class Device;
 	private:

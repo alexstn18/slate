@@ -10,9 +10,9 @@ namespace slate
 		~CommandQueue();
 		void Initialize(D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-		uint64_t ExecuteCommandLists(const std::vector<ID3D12GraphicsCommandList*> cmdList);
+		uint64_t ExecuteCommandLists(const std::vector<ID3D12GraphicsCommandList*>& cmdList);
 
-		ComPtr<ID3D12CommandQueue> GetCommandQueue() const { return m_CommandQueue; }
+		[[nodiscard]] ComPtr<ID3D12CommandQueue> GetCommandQueue() const { return m_CommandQueue; }
 		Fence& GetFence() { return *m_Fence; }
 
 		void WaitForFenceValue(uint64_t value);
