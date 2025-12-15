@@ -57,8 +57,6 @@ bool Fence::IsComplete(uint64_t value) const
 void Fence::CreateFence(uint64_t initialValue)
 {
 	auto device = App.Device().GetDevice();
-
-	ComPtr<ID3D12Fence> fence{ nullptr };
 	log::ThrowIfFailed(device->CreateFence(initialValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence)));
 }
 

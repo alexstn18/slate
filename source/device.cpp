@@ -149,7 +149,6 @@ void Device::Update()
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 	glm::mat4 view = glm::lookAtLH(eyePos, focusPoint, up);
 
-	float aspectRatio = float(m_width) / float(m_height);
 	glm::mat4 projection = glm::perspectiveFovLH(glm::radians(45.0f), float(m_width), float(m_height), 0.1f, 100.0f);
 
 	m_mvpMatrix = projection * view * modelMatrix;
@@ -408,7 +407,6 @@ void Device::CompileTriangleShaders()
 
 void Device::CreateVertexBuffer()
 {
-	const float ASPECT_RATIO = static_cast<float>(m_width / m_height);
 	Vertex cubeVertices[] =
 	{
 		// Front - use normal coordinates
