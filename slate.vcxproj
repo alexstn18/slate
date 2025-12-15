@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="source\rendering\command_list.cpp" />
     <ClCompile Include="source\rendering\fence.cpp" />
     <ClCompile Include="source\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -165,6 +166,7 @@
     <ClCompile Include="source\rendering\swap_chain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\rendering\command_list.hpp" />
     <ClInclude Include="include\rendering\fence.hpp" />
     <ClInclude Include="include\rendering\command_queue.hpp" />
     <ClInclude Include="include\rendering\descriptor_heap.hpp" />
