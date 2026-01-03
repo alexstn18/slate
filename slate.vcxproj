@@ -151,6 +151,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="source\rendering\buffer.cpp" />
+    <ClCompile Include="source\rendering\resource_state_tracker.cpp" />
+    <ClCompile Include="source\rendering\resource.cpp" />
+    <ClCompile Include="source\rendering\dynamic_descriptor_heap.cpp" />
+    <ClCompile Include="source\rendering\descriptor_allocation.cpp" />
+    <ClCompile Include="source\rendering\descriptor_allocator_page.cpp" />
+    <ClCompile Include="source\rendering\descriptor_allocator.cpp" />
     <ClCompile Include="source\rendering\command_list.cpp" />
     <ClCompile Include="source\rendering\fence.cpp" />
     <ClCompile Include="source\pch.cpp">
@@ -162,10 +169,17 @@
     <ClCompile Include="source\device.cpp" />
     <ClCompile Include="source\application.cpp" />
     <ClCompile Include="source\main.cpp" />
+    <ClCompile Include="source\rendering\root_signature.cpp" />
     <ClCompile Include="source\window.cpp" />
     <ClCompile Include="source\rendering\swap_chain.cpp" />
+    <ClCompile Include="source\rendering\upload_buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\rendering\buffer.hpp" />
+    <ClInclude Include="include\rendering\dynamic_descriptor_heap.hpp" />
+    <ClInclude Include="include\rendering\descriptor_allocation.hpp" />
+    <ClInclude Include="include\rendering\descriptor_allocator_page.hpp" />
+    <ClInclude Include="include\rendering\descriptor_allocator.hpp" />
     <ClInclude Include="include\rendering\command_list.hpp" />
     <ClInclude Include="include\rendering\fence.hpp" />
     <ClInclude Include="include\rendering\command_queue.hpp" />
@@ -173,9 +187,14 @@
     <ClInclude Include="include\device.hpp" />
     <ClInclude Include="include\application.hpp" />
     <ClInclude Include="include\pch.hpp" />
+    <ClInclude Include="include\rendering\root_signature.hpp" />
+    <ClInclude Include="include\util\math.hpp" />
     <ClInclude Include="include\window.hpp" />
     <ClInclude Include="include\log.hpp" />
     <ClInclude Include="include\rendering\swap_chain.hpp" />
+    <ClInclude Include="include\rendering\upload_buffer.hpp" />
+    <ClInclude Include="include\rendering\resource.hpp" />
+    <ClInclude Include="include\rendering\resource_state_tracker.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\triangle.hlsl">
