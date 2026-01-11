@@ -54,4 +54,3 @@ typedef double   f64;
 #include "log.hpp"
 #include "application.hpp"
 #include "renderer.hpp"
-

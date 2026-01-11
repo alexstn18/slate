@@ -75,7 +75,8 @@ void DynamicDescriptorHeap::CommitStagedDescriptors(CommandList& commandList,
 			m_CurrentGPUDescriptorHandle = m_CurrentDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 			m_NumFreeHandles = m_NumDescriptorsPerHeap;
 
-			commandList.SetDescriptorHeap(m_DescriptorHeapType, m_CurrentDescriptorHeap.Get());
+			ID3D12DescriptorHeap* heaps[] = { m_CurrentDescriptorHeap.Get() };
+			commandList.Get()->SetDescriptorHeaps(1, heaps);
 
 			// When updating the descriptor heap on the command list,
 			// all descriptor tables must be (re)copied to the new
@@ -151,7 +152,8 @@ D3D12_GPU_DESCRIPTOR_HANDLE DynamicDescriptorHeap::CopyDescriptor(CommandList& c
 
 		m_NumFreeHandles = m_NumDescriptorsPerHeap;
 
-		commandList.SetDescriptorHeap(m_DescriptorHeapType, m_CurrentDescriptorHeap.Get());
+		ID3D12DescriptorHeap* heaps[] = { m_CurrentDescriptorHeap.Get() };
+		commandList.Get()->SetDescriptorHeaps(1, heaps);
 
 		// When updating the descriptor heap on the command list,
 		// all descriptor tables must be (re)copied to the new

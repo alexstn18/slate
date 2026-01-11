@@ -43,8 +43,11 @@ Resource::Resource(Microsoft::WRL::ComPtr<ID3D12Resource> resource, const std::w
 Resource::Resource(const Resource& copy)
     : m_D3D12Resource(copy.m_D3D12Resource)
     , m_ResourceName(copy.m_ResourceName)
-    , m_D3D12ClearValue(std::make_unique<D3D12_CLEAR_VALUE>(*copy.m_D3D12ClearValue))
 {
+    if (copy.m_D3D12ClearValue)
+    {
+        m_D3D12ClearValue = std::make_unique<D3D12_CLEAR_VALUE>(*copy.m_D3D12ClearValue);
+    }
 }
 
 Resource::Resource(Resource&& copy)
@@ -87,7 +90,7 @@ Resource& Resource::operator=(Resource&& other)
 void Resource::SetD3D12Resource(ComPtr<ID3D12Resource> d3d12Resource, const D3D12_CLEAR_VALUE* clearValue)
 {
     m_D3D12Resource = d3d12Resource;
-    if (m_D3D12ClearValue)
+    if (clearValue)
     {
         m_D3D12ClearValue = std::make_unique<D3D12_CLEAR_VALUE>(*clearValue);
     }

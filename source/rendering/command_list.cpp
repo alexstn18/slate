@@ -7,14 +7,37 @@
 #include "rendering/dynamic_descriptor_heap.hpp"
 #include "rendering/pipeline_state_object.hpp"
 #include "rendering/root_signature.hpp"
+#include "rendering/render_target.hpp"
+#include "rendering/vertex_buffer.hpp"
+#include "rendering/index_buffer.hpp"
 
 using namespace slate;
 
-slate::CommandList::CommandList()
+class MakeUploadBuffer : public UploadBuffer
 {
+public:
+	MakeUploadBuffer(size_t pageSize = _2MB)
+		: UploadBuffer{ pageSize }
+	{
+	}
+
+	virtual ~MakeUploadBuffer() {}
+};
+
+CommandList::CommandList()
+{
+	auto device = App.Renderer().D3D12Device();
+	m_UploadBuffer = std::make_unique<MakeUploadBuffer>();
+	m_ResourceStateTracker = std::make_unique<ResourceStateTracker>();
+
+	for (i32 i{ 0 }; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+	{
+		m_DynamicDescriptorHeap[i] =
+			std::make_unique<DynamicDescriptorHeap>(static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+	}
 }
 
-slate::CommandList::~CommandList()
+CommandList::~CommandList()
 {
 }
 
@@ -24,12 +47,19 @@ void CommandList::Initialize(D3D12_COMMAND_LIST_TYPE type)
 
 	m_CommandListType = type;
 
-	log::ThrowIfFailed(device->CreateCommandAllocator(m_CommandListType, IID_PPV_ARGS(&m_CommandAllocator)));
-	log::ThrowIfFailed(device->CreateCommandList(0, m_CommandListType, m_CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_CommandList)));
+	ComPtr<ID3D12CommandAllocator> tempAllocator{ nullptr };
+
+	log::ThrowIfFailed(device->CreateCommandAllocator(m_CommandListType, IID_PPV_ARGS(&tempAllocator)));
+	log::ThrowIfFailed(device->CreateCommandList(0, m_CommandListType, tempAllocator.Get(), nullptr, IID_PPV_ARGS(&m_CommandList)));
+
+	log::ThrowIfFailed(m_CommandList->Close());
 }
 
-void CommandList::Reset()
+void CommandList::Reset(ComPtr<ID3D12CommandAllocator> allocator)
 {
+	assert(allocator);
+	m_CommandAllocator = allocator;
+
 	log::ThrowIfFailed(m_CommandAllocator->Reset());
 	log::ThrowIfFailed(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr)); // nullptr = Pipeline State Object, optional
 
@@ -40,7 +70,6 @@ void CommandList::Reset()
 
 	for (i32 i{ 0 }; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i) {
 		m_DynamicDescriptorHeap[i]->Reset();
-		//m_DescriptorHeaps[i] = nullptr;
 	}
 
 	m_RootSignature = nullptr;
@@ -143,6 +172,11 @@ void CommandList::ReleaseTrackedObjects()
 	m_TrackedObjects.clear();
 }
 
+void CommandList::TrackResource(ComPtr<ID3D12Object> object)
+{
+	m_TrackedObjects.push_back(object);
+}
+
 void CommandList::TrackResource(const std::shared_ptr<Resource>& res)
 {
 	TrackObject(res->D3D12Resource());
@@ -155,8 +189,14 @@ void CommandList::TrackResource(const Resource& res)
 
 void CommandList::CopyResource(Resource& dstRes, const Resource& srcRes)
 {
-	TransitionBarrier(dstRes.D3D12Resource(), D3D12_RESOURCE_STATE_COPY_DEST);
-	TransitionBarrier(srcRes.D3D12Resource(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+	// Copy queues can only transition to/from COMMON state
+	// Direct/Compute queues can use COPY_DEST state
+	TransitionBarrier(dstRes.D3D12Resource(), m_CommandListType == D3D12_COMMAND_LIST_TYPE_COPY ?
+		D3D12_RESOURCE_STATE_COMMON :
+		D3D12_RESOURCE_STATE_COPY_DEST);
+	TransitionBarrier(srcRes.D3D12Resource(), m_CommandListType == D3D12_COMMAND_LIST_TYPE_COPY ?
+		D3D12_RESOURCE_STATE_COMMON :
+		D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 	FlushResourceBarriers();
 
@@ -186,6 +226,71 @@ void CommandList::ResolveSubResource(const std::shared_ptr<Resource>& dstRes, co
 void CommandList::SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology)
 {
 	m_CommandList->IASetPrimitiveTopology(topology);
+}
+
+void CommandList::SetPipelineState(const std::shared_ptr<PipelineStateObject>& pipelineState)
+{
+	assert(pipelineState);
+
+	auto d3d12PipelineStateObject = pipelineState->GetD3D12PipelineState().Get();
+	if (m_PipelineState != d3d12PipelineStateObject)
+	{
+		m_PipelineState = d3d12PipelineStateObject;
+
+		m_CommandList->SetPipelineState(d3d12PipelineStateObject);
+
+		TrackResource(d3d12PipelineStateObject);
+	}
+}
+
+void CommandList::SetGraphics32BitConstants(u32 rootParameterIndex, u32 numConstants, const void* constants)
+{
+	m_CommandList->SetGraphicsRoot32BitConstants(rootParameterIndex, numConstants, constants, 0);
+}
+
+void CommandList::SetCompute32BitConstants(u32 rootParameterIndex, u32 numConstants, const void* constants)
+{
+	m_CommandList->SetComputeRoot32BitConstants(rootParameterIndex, numConstants, constants, 0);
+}
+
+void CommandList::SetGraphicsRootSignature(const std::shared_ptr<RootSignature>& rootSignature)
+{
+	assert(rootSignature);
+
+	auto d3d12RootSignature = rootSignature->Get().Get();
+	if (m_RootSignature != d3d12RootSignature)
+	{
+		m_RootSignature = d3d12RootSignature;
+
+		for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+		{
+			m_DynamicDescriptorHeap[i]->ParseRootSignature(*rootSignature);
+		}
+
+		m_CommandList->SetGraphicsRootSignature(m_RootSignature);
+
+		TrackResource(m_RootSignature);
+	}
+}
+
+void CommandList::SetComputeRootSignature(const std::shared_ptr<RootSignature>& rootSignature)
+{
+	assert(rootSignature);
+
+	auto d3d12RootSignature = rootSignature->Get().Get();
+	if (m_RootSignature != d3d12RootSignature)
+	{
+		m_RootSignature = d3d12RootSignature;
+
+		for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+		{
+			m_DynamicDescriptorHeap[i]->ParseRootSignature(*rootSignature);
+		}
+
+		m_CommandList->SetComputeRootSignature(m_RootSignature);
+
+		TrackResource(m_RootSignature);
+	}
 }
 
 void CommandList::SetGraphicsDynamicConstantBuffer(u32 rootParameterIndex, size_t sizeInBytes, const void* bufferData)
@@ -256,6 +361,33 @@ void CommandList::SetScissorRects(const std::vector<D3D12_RECT>& scissorRects)
 	m_CommandList->RSSetScissorRects(static_cast<UINT>(scissorRects.size()), scissorRects.data());
 }
 
+void CommandList::SetRenderTarget(const RenderTarget& renderTarget)
+{
+	const auto& rtvs = renderTarget.GetRenderTargetViews();
+	D3D12_CPU_DESCRIPTOR_HANDLE dsv = renderTarget.GetDepthStencilView();
+
+	m_CommandList->OMSetRenderTargets(
+		static_cast<UINT>(rtvs.size()),
+		rtvs.data(),
+		FALSE,
+		renderTarget.HasDepthStencil() ? &dsv : nullptr
+	);
+}
+
+void CommandList::SetVertexBuffer(u32 slot, const VertexBuffer& vertexBuffer)
+{
+	auto vbv = vertexBuffer.GetVertexBufferView();
+	m_CommandList->IASetVertexBuffers(slot, 1, &vbv);
+	TrackResource(vertexBuffer);
+}
+
+void CommandList::SetIndexBuffer(const IndexBuffer& indexBuffer)
+{
+	auto ibv = indexBuffer.GetIndexBufferView();
+	m_CommandList->IASetIndexBuffer(&ibv);
+	TrackResource(indexBuffer);
+}
+
 void CommandList::Dispatch(u32 numGroupsX, u32 numGroupsY, u32 numGroupsZ)
 {
 	FlushResourceBarriers();
@@ -265,4 +397,49 @@ void CommandList::Dispatch(u32 numGroupsX, u32 numGroupsY, u32 numGroupsZ)
 	}
 
 	m_CommandList->Dispatch(numGroupsX, numGroupsY, numGroupsZ);
+}
+
+void CommandList::ClearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float clearColor[4])
+{
+	m_CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
+}
+
+void CommandList::ClearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE dsv, D3D12_CLEAR_FLAGS clearFlags, float depth, u8 stencil)
+{
+	m_CommandList->ClearDepthStencilView(dsv, clearFlags, depth, stencil, 0, nullptr);
+}
+
+void CommandList::UploadBufferData(Buffer& buffer, const void* data, size_t sizeInBytes)
+{
+	// Transition buffer to copy dest
+	TransitionBarrier(buffer.D3D12Resource(), D3D12_RESOURCE_STATE_COPY_DEST);
+	FlushResourceBarriers();
+
+	// Create temporary upload buffer
+	auto device = App.Renderer().D3D12Device();
+	CD3DX12_HEAP_PROPERTIES uploadProps(D3D12_HEAP_TYPE_UPLOAD);
+	CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeInBytes);
+
+	ComPtr<ID3D12Resource> uploadBuffer;
+	log::ThrowIfFailed(device->CreateCommittedResource(
+		&uploadProps,
+		D3D12_HEAP_FLAG_NONE,
+		&bufferDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&uploadBuffer)
+	));
+
+	// Map and copy
+	void* mappedData = nullptr;
+	uploadBuffer->Map(0, nullptr, &mappedData);
+	memcpy(mappedData, data, sizeInBytes);
+	uploadBuffer->Unmap(0, nullptr);
+
+	// Copy to GPU buffer
+	m_CommandList->CopyBufferRegion(buffer.D3D12Resource().Get(), 0, uploadBuffer.Get(), 0, sizeInBytes);
+
+	// Track upload buffer so it stays alive until GPU finishes
+	TrackObject(uploadBuffer);
+	TrackResource(buffer);
 }

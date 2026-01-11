@@ -9,6 +9,8 @@ namespace slate
 	class DynamicDescriptorHeap;
 	class PipelineStateObject;
 	class RenderTarget;
+	class VertexBuffer;
+	class IndexBuffer;
 
 	// ID3D12CommandList wrapper
 	// Handles resource barriers, copying CPU and GPU resources, texture loading, mipmap-gen, binding resources to the pipeline, descriptor heaps, draw and dispatch cmds
@@ -19,7 +21,7 @@ namespace slate
 		virtual ~CommandList();
 		void Initialize(D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT);
 	
-		void Reset();
+		void Reset(ComPtr<ID3D12CommandAllocator> allocator);
 		bool Close(const std::shared_ptr<CommandList>& pendingCommandList);
 		void Close();
 
@@ -38,6 +40,7 @@ namespace slate
 		void FlushResourceBarriers();
 		void TrackObject(ComPtr<ID3D12Object> object);
 		void ReleaseTrackedObjects();
+		void TrackResource(ComPtr<ID3D12Object> object);
 		void TrackResource(const std::shared_ptr<Resource>& res);
 		void TrackResource(const Resource& res);
 
@@ -47,6 +50,8 @@ namespace slate
 		void ResolveSubResource(const std::shared_ptr<Resource>& dstRes, const std::shared_ptr<Resource>& srcRes, u32 dstSubResource = 0u, u32 srcSubResource = 0u);
 		void SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology);
 		void SetPipelineState(const std::shared_ptr<PipelineStateObject>& pipelineState);
+		void SetGraphics32BitConstants(uint32_t rootParameterIndex, uint32_t numConstants, const void* constants);
+		void SetCompute32BitConstants(uint32_t rootParameterIndex, uint32_t numConstants, const void* constants);
 		void SetGraphicsRootSignature(const std::shared_ptr<RootSignature>& rootSignature);
 		void SetComputeRootSignature(const std::shared_ptr<RootSignature>& rootSignature);
 		void SetViewport(const D3D12_VIEWPORT& viewport);
@@ -54,7 +59,14 @@ namespace slate
 		void SetScissorRect(const D3D12_RECT& scissorRect);
 		void SetScissorRects(const std::vector<D3D12_RECT>& scissorRects);
 		void SetRenderTarget(const RenderTarget& renderTarget);
+		void SetVertexBuffer(u32 slot, const VertexBuffer& vertexBuffer);
+		void SetIndexBuffer(const IndexBuffer& indexBuffer);
 		void Dispatch(u32 numGroupsX, u32 numGroupsY = 1u, u32 numGroupsZ = 1u);
+
+		void ClearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE rtv, const float clearColor[4]);
+		void ClearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE dsv, D3D12_CLEAR_FLAGS clearFlags, float depth = 1.0f, u8 stencil = 0);
+
+		void UploadBufferData(Buffer& buffer, const void* data, size_t sizeInBytes);
 
 		// Uses UploadBuffer class to update a constant buffer that needs to change often (e.g. world matrix for a model)
 		void SetGraphicsDynamicConstantBuffer(u32 rootParameterIndex, size_t sizeInBytes, const void* bufferData);

@@ -17,6 +17,10 @@ void ResourceStateTracker::ResourceBarrier(const D3D12_RESOURCE_BARRIER& barrier
 	if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION) {
 		const D3D12_RESOURCE_TRANSITION_BARRIER& transitionBarrier{ barrier.Transition };
 
+		log::Info("ResourceBarrier: resource={:p}, stateAfter={}",
+			(void*)transitionBarrier.pResource,
+			(void*)transitionBarrier.StateAfter);
+
 		// First check if there is already a known "final" state for the given resource
 		// If there is, the resource has been used on the command list before and
 		// already has a known state within the command list execution
@@ -49,6 +53,7 @@ void ResourceStateTracker::ResourceBarrier(const D3D12_RESOURCE_BARRIER& barrier
 		else { // In this case, the resource is being used on the command list for the first time
 			// Add a pending barrier. The pending barriers will be resolved before the
 			// command list is executed on the command queue
+			log::Info("Resource first use - adding to pending barriers");
 			m_PendingResourceBarriers.push_back(barrier);
 		}
 
@@ -146,10 +151,14 @@ void ResourceStateTracker::FlushResourceBarriers(const std::shared_ptr<CommandLi
 	assert(commandList);
 
 	UINT numBarriers{ static_cast<UINT>(m_ResourceBarriers.size()) };
+
+	log::Info("FlushResourceBarriers: {} barriers to flush", numBarriers);
+
 	if (numBarriers > 0) {
 		auto d3d12CommandList = commandList->Get();
 		d3d12CommandList->ResourceBarrier(numBarriers, m_ResourceBarriers.data());
 		m_ResourceBarriers.clear();
+		log::Info("Barriers flushed successfully");
 	}
 }
 

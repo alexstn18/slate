@@ -199,6 +199,7 @@ void Device::Render()
 void Device::CreateDevice(ComPtr<IDXGIAdapter4> adapter)
 {
 	log::ThrowIfFailed(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_device)));
+	log::Info("bitch i created the device");
 
 	// enable debug messages in debug mode
 #if defined(_DEBUG)

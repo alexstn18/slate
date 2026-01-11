@@ -151,6 +151,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="source\rendering\constant_buffer.cpp" />
+    <ClCompile Include="source\rendering\index_buffer.cpp" />
+    <ClCompile Include="source\rendering\render_target.cpp" />
     <ClCompile Include="source\renderer.cpp" />
     <ClCompile Include="source\rendering\adapter.cpp" />
     <ClCompile Include="source\rendering\buffer.cpp" />
@@ -176,8 +179,10 @@
     <ClCompile Include="source\window.cpp" />
     <ClCompile Include="source\rendering\swap_chain.cpp" />
     <ClCompile Include="source\rendering\upload_buffer.cpp" />
+    <ClCompile Include="source\rendering\vertex_buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\rendering\constant_buffer.hpp" />
     <ClInclude Include="include\rendering\adapter.hpp" />
     <ClInclude Include="include\rendering\buffer.hpp" />
     <ClInclude Include="include\rendering\dynamic_descriptor_heap.hpp" />
@@ -201,6 +206,9 @@
     <ClInclude Include="include\rendering\resource.hpp" />
     <ClInclude Include="include\rendering\resource_state_tracker.hpp" />
     <ClInclude Include="include\renderer.hpp" />
+    <ClInclude Include="include\rendering\render_target.hpp" />
+    <ClInclude Include="include\rendering\index_buffer.hpp" />
+    <ClInclude Include="include\rendering\vertex_buffer.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\triangle.hlsl">

@@ -5,7 +5,7 @@
 
 extern "C"
 {
-    __declspec(dllexport) extern const uint32_t D3D12SDKVersion = 711;
+    __declspec(dllexport) extern const uint32_t D3D12SDKVersion = 614;
 }
 
 extern "C"

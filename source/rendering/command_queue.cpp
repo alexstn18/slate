@@ -30,10 +30,10 @@ void CommandQueue::Initialize(D3D12_COMMAND_LIST_TYPE type)
 
 u64 CommandQueue::ExecuteCommandLists(const std::vector<ID3D12GraphicsCommandList*>& cmdList)
 {
-	for (auto cmd : cmdList)
+	/*for (auto cmd : cmdList)
 	{
 		cmd->Close();
-	}
+	}*/
 
 	ID3D12CommandList* const* cmdListsRaw = reinterpret_cast<ID3D12CommandList* const*>(cmdList.data());
 

@@ -7,25 +7,62 @@ void RootSignature::Initialize()
 {
     auto device = App.Renderer().D3D12Device();
 
+    // Reset bitmasks
+    m_DescriptorTableBitMask = 0;
+    m_SamplerTableBitMask = 0;
+    memset(m_NumDescriptorsPerTable, 0, sizeof(m_NumDescriptorsPerTable));
+
     size_t tableIdx = 0;
-    for (auto& param : m_Params)
+    for (size_t i = 0; i < m_Params.size(); ++i)
     {
+        auto& param = m_Params[i];
+
         if (param.ParameterType == D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
         {
             auto& ranges = m_Tables[tableIdx].ranges;
             param.DescriptorTable.NumDescriptorRanges = (UINT)ranges.size();
             param.DescriptorTable.pDescriptorRanges = ranges.data();
+
+            // Count total descriptors in this table
+            u32 numDescriptors = 0;
+            bool isSamplerTable = false;
+
+            for (const auto& range : ranges)
+            {
+                numDescriptors += range.NumDescriptors;
+
+                // Check if this is a sampler table
+                if (range.RangeType == D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER)
+                {
+                    isSamplerTable = true;
+                }
+            }
+
+            m_NumDescriptorsPerTable[i] = numDescriptors;
+
+            // Set bit in appropriate bitmask
+            if (isSamplerTable)
+            {
+                m_SamplerTableBitMask |= (1 << i);
+            }
+            else
+            {
+                m_DescriptorTableBitMask |= (1 << i);
+            }
+
             tableIdx++;
         }
     }
 
-    D3D12_ROOT_SIGNATURE_DESC desc = {};
-    desc.NumParameters = (UINT)m_Params.size();
-    desc.pParameters = m_Params.data();
-    desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    // Store the descriptor for later queries
+    m_RootSignatureDesc.NumParameters = (UINT)m_Params.size();
+    m_RootSignatureDesc.pParameters = m_Params.data();
+    m_RootSignatureDesc.NumStaticSamplers = 0;
+    m_RootSignatureDesc.pStaticSamplers = nullptr;
+    m_RootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
     ComPtr<ID3DBlob> blob;
-    D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, nullptr);
+    D3D12SerializeRootSignature(&m_RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, nullptr);
     device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(),
         IID_PPV_ARGS(&m_RootSignature));
 }
