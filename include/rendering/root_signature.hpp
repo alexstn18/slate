@@ -2,13 +2,20 @@
 
 namespace slate
 {
+	// Helper class generated with Claude AI
 	class RootSignature
 	{
 	public:
 		RootSignature(const RootSignature&) = delete;
 		RootSignature& operator=(const RootSignature&) = delete;
 
-		void Initialize(const D3D12_ROOT_SIGNATURE_DESC& desc);
+		RootSignature& AddRootCBV(u32 shaderRegister);
+		RootSignature& AddRootConstants(u32 shaderRegister, u32 num32BitValues);
+		RootSignature& AddDescriptorTable();
+		RootSignature& AddSRVs(u32 baseRegister, u32 count);
+		RootSignature& AddUAVs(u32 baseRegister, u32 count);
+
+		void Initialize();
 
 		ComPtr<ID3D12RootSignature> Get() const { return m_RootSignature; }
 		ID3D12RootSignature* operator->() const { return m_RootSignature.Get(); }
@@ -16,8 +23,6 @@ namespace slate
 		uint32_t GetDescriptorTableBitMask(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 		uint32_t GetNumDescriptors(uint32_t rootIndex) const;
 	private:
-		void AnalyzeRootSignature(const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& desc);
-
 		ComPtr<ID3D12RootSignature> m_RootSignature{ nullptr };
 
 		// Need to know the number of descriptors per descriptor table
@@ -33,5 +38,12 @@ namespace slate
 		// A bit mask that represents the root parameter indices 
 		// that are CBV, UAV and SRV descriptor tables
 		uint32_t m_DescriptorTableBitMask{};
+
+		struct Table {
+			std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
+		};
+
+		std::vector<D3D12_ROOT_PARAMETER> m_Params{};
+		std::vector<Table> m_Tables{};
 	};
 }

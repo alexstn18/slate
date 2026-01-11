@@ -6,20 +6,24 @@ namespace slate
 	class UploadBuffer;
 	class ResourceStateTracker;
 	class DynamicDescriptorHeap;
+	class PipelineStateObject;
+	class RenderTarget;
 
 	// ID3D12CommandList wrapper
 	// Handles resource barriers, copying CPU and GPU resources, texture loading, mipmap-gen, binding resources to the pipeline, descriptor heaps, draw and dispatch cmds
-	class CommandList
+	class CommandList : public std::enable_shared_from_this<CommandList>
 	{
 	public:
 		void Initialize(D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT);
 	
 		void Reset();
+		bool Close(const std::shared_ptr<CommandList>& pendingCommandList);
 		void Close();
 
 		[[nodiscard]] ComPtr<ID3D12GraphicsCommandList> Get() const noexcept { return m_CommandList; }
 		[[nodiscard]] ComPtr<ID3D12CommandAllocator> GetCommandAllocator() const noexcept { return m_CommandAllocator; }
-	
+		[[nodiscard]] D3D12_COMMAND_LIST_TYPE GetType() const noexcept { return m_CommandListType; }
+
 		// Used to forward a D3D12_RESORUCE_TRANSITION_BARRIER structure to ResourceStateTracker::ResourceBarrier
 		void TransitionBarrier(const Resource& resource, D3D12_RESOURCE_STATES stateAfter, UINT subResource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, bool flushBarriers = false);
 		
@@ -29,11 +33,26 @@ namespace slate
 
 		void FlushResourceBarriers();
 		void TrackObject(ComPtr<ID3D12Object> object);
+		void ReleaseTrackedObjects();
 		void TrackResource(const Resource& res);
 
 		// Used to copy one GPU resource to another (copying of resources is a common operation in rendering pipelines)
 		void CopyResource(Resource& dstRes, const Resource& srcRes);
 		
+		void ResolveSubResource(const std::shared_ptr<Resource>& dstRes, const std::shared_ptr<Resource>&, u32 dstSubResource = 0u, u32 srcSubResource = 0u);
+		void SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology);
+		void SetPipelineState(const std::shared_ptr<PipelineStateObject>& pipelineState);
+		void SetGraphicsRootSignature(const std::shared_ptr<RootSignature>& rootSignature);
+		void SetComputeRootSignature(const std::shared_ptr<RootSignature>& rootSignature);
+		void SetViewport(const D3D12_VIEWPORT& viewport);
+		void SetViewports(const std::vector<D3D12_VIEWPORT>& viewports);
+		void SetScissorRect(const D3D12_RECT& scissorRect);
+		void SetScissorRects(const std::vector<D3D12_RECT>& scissorRects);
+		void SetRenderTarget(const RenderTarget& renderTarget);
+		void Dispatch(u32 numGroupsX, u32 numGroupsY = 1u, u32 numGroupsZ = 1u);
+		void SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType);
+		void BindDescriptorHeaps();
+
 		// Uses UploadBuffer class to update a constant buffer that needs to change often (e.g. world matrix for a model)
 		void SetGraphicsDynamicConstantBuffer(u32 rootParameterIndex, size_t sizeInBytes, const void* bufferData);
 		
@@ -47,7 +66,9 @@ namespace slate
 		// Before executing a "Draw" command on the command list, all resource barriers must be flushed to the command list
 		// using the "FlushResourceBarriers" method and any resource descriptors that were staged to the DynamicDescriptorHeap
 		// need to be committed
-		void Draw(u32 vertexCount, u32 instanceCount, u32 startVertex, u32 startInstance); 
+		void Draw(u32 vertexCount, u32 instanceCount = 1u, u32 startVertex = 0u, u32 startInstance = 0u); 
+
+		void DrawIndexed(u32 indexCount, u32 instanceCount, u32 startIndex, i32 baseVertex, u32 startInstance);
 	protected:
 		friend class Device;
 	private:

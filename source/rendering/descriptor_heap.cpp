@@ -6,7 +6,7 @@
 
 using namespace slate;
 
-void DescriptorHeap::Initialize(HeapType type, uint32_t maxDescriptors)
+void DescriptorHeap::Initialize(HeapType type, u32 maxDescriptors)
 {
 	auto device = App.Device().GetDevice();
 
@@ -44,7 +44,7 @@ uint32_t DescriptorHeap::GetNextIndex()
 CD3DX12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCPUHandle(uint32_t index)
 {
 	log::Assert(index < m_MaxIndex, "Descriptor index {} out of bounds (max: {})", index, m_MaxIndex);
-	return CD3DX12_CPU_DESCRIPTOR_HANDLE(m_Heap->GetCPUDescriptorHandleForHeapStart(), int32_t(index), m_DescriptorSize);
+	return CD3DX12_CPU_DESCRIPTOR_HANDLE(m_Heap->GetCPUDescriptorHandleForHeapStart(), i32(index), m_DescriptorSize);
 }
 
 CD3DX12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::GetGPUHandle(uint32_t index)
@@ -52,7 +52,7 @@ CD3DX12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::GetGPUHandle(uint32_t index)
 	log::Assert(m_Heap->GetDesc().Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 		"Heap must be shader visible to get GPU handle");
 
-	return CD3DX12_GPU_DESCRIPTOR_HANDLE(m_Heap->GetGPUDescriptorHandleForHeapStart(), int32_t(index), m_DescriptorSize);
+	return CD3DX12_GPU_DESCRIPTOR_HANDLE(m_Heap->GetGPUDescriptorHandleForHeapStart(), i32(index), m_DescriptorSize);
 }
 
 D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeap::HeapTypeToD3D12HeapType(HeapType type)

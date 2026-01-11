@@ -15,7 +15,7 @@ namespace slate
 		Resource& operator=(const Resource& other);
 		Resource& operator=(Resource&& other);
 
-		virtual ~Resource();
+		virtual ~Resource() = default;
 
 		bool IsValid() const
 		{
@@ -27,9 +27,8 @@ namespace slate
 
 		// Replace the D3D12 resource
 		// Should only be called by the CommandList.
-		virtual void SetD3D12Resource(Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource,
+		virtual void SetD3D12Resource(ComPtr<ID3D12Resource> d3d12Resource,
 			const D3D12_CLEAR_VALUE* clearValue = nullptr);
-
 		/**
 		 * Get the SRV for a resource.
 		 *
@@ -55,9 +54,6 @@ namespace slate
 		 */
 		virtual void Reset();
 	protected:
-		Resource(const D3D12_RESOURCE_DESC& resourceDesc, const D3D12_CLEAR_VALUE* clearValue = nullptr);
-		Resource(ComPtr<ID3D12Resource> resource, const D3D12_CLEAR_VALUE* clearValue = nullptr);
-
 		virtual ~Resource() = default;
 
 		ComPtr<ID3D12Resource> m_D3D12Resource{ nullptr };

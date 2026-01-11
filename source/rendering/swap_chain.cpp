@@ -3,7 +3,7 @@
 
 using namespace slate;
 
-void SwapChain::Initialize(HWND hWnd, uint32_t width, uint32_t height, uint32_t bufferCount)
+void SwapChain::Initialize(HWND hWnd, u32 width, u32 height, u32 bufferCount)
 {
 	m_Width = width;
 	m_Height = height;
@@ -28,7 +28,7 @@ void SwapChain::Present(bool vSync)
 	log::ThrowIfFailed(m_SwapChain->Present(syncInterval, presentFlags));
 }
 
-void SwapChain::Resize(uint32_t width, uint32_t height)
+void SwapChain::Resize(u32 width, u32 height)
 {
 	if (width == m_Width && height == m_Height)
 		return;
@@ -57,7 +57,7 @@ void SwapChain::Resize(uint32_t width, uint32_t height)
 	log::Info("Swap chain resized successfully");
 }
 
-uint32_t SwapChain::GetCurrentBackBufferIndex() const
+u32 SwapChain::GetCurrentBackBufferIndex() const
 {
 	return m_SwapChain->GetCurrentBackBufferIndex();
 }
@@ -67,7 +67,7 @@ ComPtr<ID3D12Resource> SwapChain::GetCurrentBackBuffer() const
 	return m_BackBuffers[GetCurrentBackBufferIndex()];
 }
 
-ComPtr<ID3D12Resource> SwapChain::GetBackBuffer(uint32_t index) const
+ComPtr<ID3D12Resource> SwapChain::GetBackBuffer(u32 index) const
 {
 	log::Assert(index < m_BufferCount, "Back buffer index {} out of range (max: {})",
 		index, m_BufferCount);
@@ -111,7 +111,7 @@ void SwapChain::CreateBackBuffers()
 {
 	m_BackBuffers.resize(m_BufferCount);
 
-	for (uint32_t i = 0; i < m_BufferCount; ++i)
+	for (u32 i = 0; i < m_BufferCount; ++i)
 	{
 		log::ThrowIfFailed(m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&m_BackBuffers[i])));
 	}

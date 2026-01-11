@@ -5,14 +5,14 @@ namespace slate
 	class SwapChain
 	{
 	public:
-		void Initialize(HWND hWnd, uint32_t width, uint32_t height, uint32_t bufferCount);
+		void Initialize(HWND hWnd, u32 width, u32 height, u32 bufferCount);
 		void Present(bool vSync);
-		void Resize(uint32_t width, uint32_t height);
+		void Resize(u32 width, u32 height);
 
-		uint32_t GetCurrentBackBufferIndex() const;
+		u32 GetCurrentBackBufferIndex() const;
 		ComPtr<ID3D12Resource> GetCurrentBackBuffer() const;
-		ComPtr<ID3D12Resource> GetBackBuffer(uint32_t index) const;
-		uint32_t GetBackBufferCount() const { return m_BufferCount; }
+		ComPtr<ID3D12Resource> GetBackBuffer(u32 index) const;
+		u32 GetBackBufferCount() const { return m_BufferCount; }
 
 		DXGI_FORMAT GetFormat() const { return m_Format; }
 		bool IsTearingSupported() const { return m_TearingSupported; }
@@ -31,9 +31,9 @@ namespace slate
 		std::vector<ComPtr<ID3D12Resource>> m_BackBuffers;
 
 		DXGI_FORMAT m_Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		uint32_t m_Width{ 0 };
-		uint32_t m_Height{ 0 };
-		uint32_t m_BufferCount{ 2 };
+		u32 m_Width{ 0 };
+		u32 m_Height{ 0 };
+		u32 m_BufferCount{ 2 };
 
 		bool m_TearingSupported{ false };
 	};

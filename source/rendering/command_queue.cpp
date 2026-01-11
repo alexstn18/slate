@@ -24,11 +24,11 @@ void CommandQueue::Initialize(D3D12_COMMAND_LIST_TYPE type)
 
 	log::ThrowIfFailed(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_CommandQueue)));
 	m_Fence = new Fence();
-	m_Fence->Initialize(0);
+	m_Fence->Initialize(0u);
 	log::Info("Command queue created successfully");
 }
 
-uint64_t CommandQueue::ExecuteCommandLists(const std::vector<ID3D12GraphicsCommandList*>& cmdList)
+u64 CommandQueue::ExecuteCommandLists(const std::vector<ID3D12GraphicsCommandList*>& cmdList)
 {
 	for (auto cmd : cmdList)
 	{
@@ -42,7 +42,7 @@ uint64_t CommandQueue::ExecuteCommandLists(const std::vector<ID3D12GraphicsComma
 	return m_Fence->Signal(m_CommandQueue);
 }
 
-void CommandQueue::WaitForFenceValue(uint64_t value)
+void CommandQueue::WaitForFenceValue(u64 value)
 {
 	m_Fence->WaitForValue(value);
 }

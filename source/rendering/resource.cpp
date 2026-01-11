@@ -87,7 +87,7 @@ Resource::~Resource()
 {
 }
 
-void Resource::SetD3D12Resource(Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource, const D3D12_CLEAR_VALUE* clearValue)
+void Resource::SetD3D12Resource(ComPtr<ID3D12Resource> d3d12Resource, const D3D12_CLEAR_VALUE* clearValue)
 {
     m_D3D12Resource = d3d12Resource;
     if (m_D3D12ClearValue)
