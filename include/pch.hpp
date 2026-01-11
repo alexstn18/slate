@@ -26,10 +26,6 @@
 template<typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-#include "log.hpp"
-#include "application.hpp"
-#include "device.hpp"
-
 #define _KB(x) (x * 1024)
 #define _MB(x) (x * 1024 * 1024)
 
@@ -54,3 +50,8 @@ typedef int32_t  i32;
 typedef int64_t  i64;
 typedef float    f32;
 typedef double   f64;
+
+#include "log.hpp"
+#include "application.hpp"
+#include "renderer.hpp"
+

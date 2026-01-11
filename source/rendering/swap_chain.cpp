@@ -1,5 +1,6 @@
 #include "pch.hpp"
 #include "rendering/swap_chain.hpp"
+#include "renderer.hpp"
 
 using namespace slate;
 
@@ -12,7 +13,7 @@ void SwapChain::Initialize(HWND hWnd, u32 width, u32 height, u32 bufferCount)
 	m_TearingSupported = CheckForTearingSupport();
 	log::Info("Tearing support: {}", m_TearingSupported ? "enabled" : "disabled");
 
-	auto commandQueue = App.Device().GetCommandQueue();
+	auto commandQueue = App.Renderer().D3D12CommandQueue();
 
 	CreateSwapChain(commandQueue, hWnd);
 	CreateBackBuffers();

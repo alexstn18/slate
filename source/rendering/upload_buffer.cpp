@@ -9,6 +9,10 @@ UploadBuffer::UploadBuffer(size_t pageSize)
 {
 }
 
+UploadBuffer::~UploadBuffer()
+{
+}
+
 // NOTE: allocations for constant buffers must be aligned to 256 bytes
 UploadBuffer::Allocation UploadBuffer::Allocate(size_t sizeInBytes, size_t alignment)
 {
@@ -62,11 +66,14 @@ UploadBuffer::Page::Page(size_t sizeInBytes) :
 	m_CPUPtr{nullptr},
 	m_GPUPtr{D3D12_GPU_VIRTUAL_ADDRESS(0ull)}
 {
-	auto device = App.Device().GetDevice();
+	auto uploadProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto resourceDescBuf = CD3DX12_RESOURCE_DESC::Buffer(m_PageSize);
+
+	auto device = App.Renderer().D3D12Device();
 	log::ThrowIfFailed(device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		&uploadProperty,
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(m_PageSize),
+		&resourceDescBuf,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&m_D3D12Resource)

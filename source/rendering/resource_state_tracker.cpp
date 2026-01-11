@@ -130,6 +130,16 @@ u32 ResourceStateTracker::FlushPendingResourceBarriers(const std::shared_ptr<Com
 			}
 		}
 	}
+
+	u32 numBarriers = static_cast<u32>(resourceBarriers.size());
+	if (numBarriers > 0) {
+		auto d3d12CommandList = commandList->Get();
+		d3d12CommandList->ResourceBarrier(numBarriers, resourceBarriers.data());
+	}
+
+	m_PendingResourceBarriers.clear();
+
+	return numBarriers;
 }
 
 void ResourceStateTracker::FlushResourceBarriers(const std::shared_ptr<CommandList>& commandList) {

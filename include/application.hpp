@@ -1,11 +1,11 @@
 #pragma once
 
 // TODO: add versioning script on source control (that gets updated on push)
-#define SLATE_VERSION "V0.1 - 16/11/25"
+#define SLATE_VERSION "V0.2 - 11/01/26"
 namespace slate
 {
 class Window;
-class Device;
+class Renderer;
 
 class Application
 {
@@ -14,11 +14,11 @@ public:
 	void Run();
 	void Shutdown();
 
-	[[nodiscard]] Window& Window() const { return *m_window; }
-	[[nodiscard]] Device& Device() const { return *m_device; }
+	[[nodiscard]] Window& Window() const { return *m_Window; }
+	[[nodiscard]] Renderer& Renderer() const { return *m_Renderer; }
 private:
-	slate::Window* m_window{ nullptr };
-	slate::Device* m_device{ nullptr };
+	slate::Window* m_Window{ nullptr };
+	slate::Renderer* m_Renderer{ nullptr };
 };
 
 extern Application App;

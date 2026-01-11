@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "device.hpp"
 #include "window.hpp"
 
 #if defined(_DEBUG)

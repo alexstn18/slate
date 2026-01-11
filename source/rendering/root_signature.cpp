@@ -5,7 +5,7 @@ using namespace slate;
 
 void RootSignature::Initialize()
 {
-    auto device = App.Device().GetDevice();
+    auto device = App.Renderer().D3D12Device();
 
     size_t tableIdx = 0;
     for (auto& param : m_Params)
@@ -30,7 +30,7 @@ void RootSignature::Initialize()
         IID_PPV_ARGS(&m_RootSignature));
 }
 
-uint32_t RootSignature::GetDescriptorTableBitMask(D3D12_DESCRIPTOR_HEAP_TYPE type) const
+[[nodiscard]] uint32_t RootSignature::GetDescriptorTableBitMask(D3D12_DESCRIPTOR_HEAP_TYPE type) const noexcept
 {
 	u32 descriptorTableBitMask{ 0 };
 	switch (type) {
@@ -45,7 +45,7 @@ uint32_t RootSignature::GetDescriptorTableBitMask(D3D12_DESCRIPTOR_HEAP_TYPE typ
 	return descriptorTableBitMask;
 }
 
-uint32_t RootSignature::GetNumDescriptors(uint32_t rootIndex) const
+[[nodiscard]] uint32_t RootSignature::GetNumDescriptors(uint32_t rootIndex) const noexcept
 {
 	assert(rootIndex < 32);
 

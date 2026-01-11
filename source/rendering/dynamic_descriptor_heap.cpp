@@ -15,7 +15,7 @@ DynamicDescriptorHeap::DynamicDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, u3
 	, m_CurrentGPUDescriptorHandle{ D3D12_DEFAULT }
 	, m_NumFreeHandles{ 0u }
 {
-	m_DescriptorHandleIncrementSize = App.Device().GetDescriptorHandleIncrementSize(type);
+	m_DescriptorHandleIncrementSize = App.Renderer().D3D12Device()->GetDescriptorHandleIncrementSize(type);
 
 	m_DescriptorHandleCache = std::make_unique<D3D12_CPU_DESCRIPTOR_HANDLE[]>(m_NumDescriptorsPerHeap);
 }
@@ -64,7 +64,7 @@ void DynamicDescriptorHeap::CommitStagedDescriptors(CommandList& commandList,
 
 	if (numDescriptorsToCommit > 0)
 	{
-		auto device = App.Device().GetDevice();
+		auto device = App.Renderer().D3D12Device();
 		auto d3d12GraphicsCommandList = commandList.Get();
 		assert(d3d12GraphicsCommandList != nullptr);
 
@@ -159,7 +159,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE DynamicDescriptorHeap::CopyDescriptor(CommandList& c
 		m_StaleDescriptorTableBitMask = m_DescriptorTableBitMask;
 	}
 
-	auto device = App.Device().GetDevice();
+	auto device = App.Renderer().D3D12Device();
 	
 	D3D12_GPU_DESCRIPTOR_HANDLE hGPU{ m_CurrentGPUDescriptorHandle };
 	device->CopyDescriptorsSimple(1, m_CurrentCPUDescriptorHandle, cpuDescriptor, m_DescriptorHeapType);
@@ -238,7 +238,7 @@ ComPtr<ID3D12DescriptorHeap> DynamicDescriptorHeap::RequestDescriptorHeap()
 
 ComPtr<ID3D12DescriptorHeap> DynamicDescriptorHeap::CreateDescriptorHeap()
 {
-	auto device = App.Device().GetDevice();
+	auto device = App.Renderer().D3D12Device();
 
 	D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc = {};
 	descriptorHeapDesc.Type = m_DescriptorHeapType;

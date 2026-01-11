@@ -15,15 +15,13 @@ namespace slate
 		Resource& operator=(const Resource& other);
 		Resource& operator=(Resource&& other);
 
-		virtual ~Resource() = default;
-
 		bool IsValid() const
 		{
 			return (m_D3D12Resource != nullptr);
 		}
 
 		ComPtr<ID3D12Resource> D3D12Resource() const { return m_D3D12Resource; }
-		D3D12_RESOURCE_DESC GetResourceDesc() const;
+		D3D12_RESOURCE_DESC GetResourceDesc() const { return m_ResourceDesc; }
 
 		// Replace the D3D12 resource
 		// Should only be called by the CommandList.
@@ -60,6 +58,7 @@ namespace slate
 		D3D12_FEATURE_DATA_FORMAT_SUPPORT m_FormatSupport{};
 		std::unique_ptr<D3D12_CLEAR_VALUE> m_D3D12ClearValue{ nullptr };
 		std::wstring m_ResourceName{};
+		D3D12_RESOURCE_DESC m_ResourceDesc{};
 	};
 }
 

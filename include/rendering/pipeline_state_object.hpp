@@ -5,6 +5,7 @@ namespace slate
 	class PipelineStateObject
 	{
 	public:
+		PipelineStateObject() = default;
 		void Initialize(const D3D12_PIPELINE_STATE_STREAM_DESC& desc);
 		void InitializeAsGraphicsPSO(const D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc);
 		virtual ~PipelineStateObject() = default;

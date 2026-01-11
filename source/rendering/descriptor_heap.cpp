@@ -8,7 +8,7 @@ using namespace slate;
 
 void DescriptorHeap::Initialize(HeapType type, u32 maxDescriptors)
 {
-	auto device = App.Device().GetDevice();
+	auto device = App.Renderer().D3D12Device();
 
 	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 	D3D12_DESCRIPTOR_HEAP_TYPE heapType = HeapTypeToD3D12HeapType(type);

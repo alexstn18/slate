@@ -1,15 +1,26 @@
 #include "pch.hpp"
 #include "rendering/command_list.hpp"
 #include "rendering/resource.hpp"
+#include "rendering/buffer.hpp"
 #include "rendering/upload_buffer.hpp"
 #include "rendering/resource_state_tracker.hpp"
 #include "rendering/dynamic_descriptor_heap.hpp"
+#include "rendering/pipeline_state_object.hpp"
+#include "rendering/root_signature.hpp"
 
 using namespace slate;
 
+slate::CommandList::CommandList()
+{
+}
+
+slate::CommandList::~CommandList()
+{
+}
+
 void CommandList::Initialize(D3D12_COMMAND_LIST_TYPE type)
 {
-	auto device = App.Device().GetDevice();
+	auto device = App.Renderer().D3D12Device();
 
 	m_CommandListType = type;
 
@@ -56,9 +67,9 @@ void CommandList::Close()
 	log::ThrowIfFailed(m_CommandList->Close());
 }
 
-void CommandList::TransitionBarrier(const Resource& resource, D3D12_RESOURCE_STATES stateAfter, UINT subResource, bool flushBarriers)
+void CommandList::TransitionBarrier(const std::shared_ptr<Resource>& resource, D3D12_RESOURCE_STATES stateAfter, UINT subResource, bool flushBarriers)
 {
-	auto d3d12Resource = resource.D3D12Resource();
+	auto d3d12Resource = resource->D3D12Resource();
 	if (d3d12Resource) {
 		// The "before" state is not important
 		// It will be resolved the resource state tracker
@@ -68,6 +79,22 @@ void CommandList::TransitionBarrier(const Resource& resource, D3D12_RESOURCE_STA
 	}
 
 	if (flushBarriers) {
+		FlushResourceBarriers();
+	}
+}
+
+void CommandList::TransitionBarrier(ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES stateAfter, UINT subResource, bool flushBarriers)
+{
+	if (resource)
+	{
+		// The "before" state is not important. It will be resolved by the resource state tracker.
+		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(resource.Get(), D3D12_RESOURCE_STATE_COMMON, stateAfter,
+			subResource);
+		m_ResourceStateTracker->ResourceBarrier(barrier);
+	}
+
+	if (flushBarriers)
+	{
 		FlushResourceBarriers();
 	}
 }
@@ -116,6 +143,11 @@ void CommandList::ReleaseTrackedObjects()
 	m_TrackedObjects.clear();
 }
 
+void CommandList::TrackResource(const std::shared_ptr<Resource>& res)
+{
+	TrackObject(res->D3D12Resource());
+}
+
 void CommandList::TrackResource(const Resource& res)
 {
 	TrackObject(res.D3D12Resource());
@@ -123,8 +155,8 @@ void CommandList::TrackResource(const Resource& res)
 
 void CommandList::CopyResource(Resource& dstRes, const Resource& srcRes)
 {
-	TransitionBarrier(dstRes, D3D12_RESOURCE_STATE_COPY_DEST);
-	TransitionBarrier(srcRes, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	TransitionBarrier(dstRes.D3D12Resource(), D3D12_RESOURCE_STATE_COPY_DEST);
+	TransitionBarrier(srcRes.D3D12Resource(), D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 	FlushResourceBarriers();
 
@@ -134,12 +166,26 @@ void CommandList::CopyResource(Resource& dstRes, const Resource& srcRes)
 	TrackResource(srcRes);
 }
 
-void CommandList::ResolveSubResource(const std::shared_ptr<Resource>& dstRes, const std::shared_ptr<Resource>&, u32 dstSubResource, u32 srcSubResource)
+void CommandList::ResolveSubResource(const std::shared_ptr<Resource>& dstRes, const std::shared_ptr<Resource>& srcRes, u32 dstSubResource, u32 srcSubResource)
 {
+	assert(dstRes && srcRes);
+
+	TransitionBarrier(dstRes, D3D12_RESOURCE_STATE_RESOLVE_DEST, dstSubResource);
+	TransitionBarrier(srcRes, D3D12_RESOURCE_STATE_RESOLVE_SOURCE, srcSubResource);
+
+	FlushResourceBarriers();
+
+	m_CommandList->ResolveSubresource(dstRes->D3D12Resource().Get(), dstSubResource,
+		srcRes->D3D12Resource().Get(), srcSubResource,
+		dstRes->GetResourceDesc().Format);
+
+	TrackResource(srcRes);
+	TrackResource(dstRes);
 }
 
 void CommandList::SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology)
 {
+	m_CommandList->IASetPrimitiveTopology(topology);
 }
 
 void CommandList::SetGraphicsDynamicConstantBuffer(u32 rootParameterIndex, size_t sizeInBytes, const void* bufferData)
@@ -151,7 +197,7 @@ void CommandList::SetGraphicsDynamicConstantBuffer(u32 rootParameterIndex, size_
 	m_CommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, heapAllocation.GPU);
 }
 
-void CommandList::SetShaderResourceView(u32 rootParameterIndex, u32 descriptorOffset, const Resource& resource, D3D12_RESOURCE_STATES stateAfter, UINT firstSubResource, UINT numSubResources, const D3D12_SHADER_RESOURCE_VIEW_DESC* srv)
+void CommandList::SetShaderResourceView(u32 rootParameterIndex, u32 descriptorOffset, const std::shared_ptr<Resource>& resource, D3D12_RESOURCE_STATES stateAfter, UINT firstSubResource, UINT numSubResources, const D3D12_SHADER_RESOURCE_VIEW_DESC* srv)
 {
 	if (numSubResources < D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) {
 		for (u32 i{ 0u }; i < numSubResources; ++i) {
@@ -162,7 +208,7 @@ void CommandList::SetShaderResourceView(u32 rootParameterIndex, u32 descriptorOf
 		TransitionBarrier(resource, stateAfter);
 	}
 
-	m_DynamicDescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, resource.GetShaderResourceView(srv));
+	m_DynamicDescriptorHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->StageDescriptors(rootParameterIndex, descriptorOffset, 1, resource->GetShaderResourceView(srv));
 
 	TrackResource(resource);
 }
@@ -190,18 +236,24 @@ void CommandList::DrawIndexed(u32 indexCount, u32 instanceCount, u32 startIndex,
 
 void CommandList::SetViewport(const D3D12_VIEWPORT& viewport)
 {
+	SetViewports({ viewport });
 }
 
 void CommandList::SetViewports(const std::vector<D3D12_VIEWPORT>& viewports)
 {
+	assert(viewports.size() < D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
+	m_CommandList->RSSetViewports(static_cast<UINT>(viewports.size()), viewports.data());
 }
 
 void CommandList::SetScissorRect(const D3D12_RECT& scissorRect)
 {
+	SetScissorRects({ scissorRect });
 }
 
 void CommandList::SetScissorRects(const std::vector<D3D12_RECT>& scissorRects)
 {
+	assert(scissorRects.size() < D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE);
+	m_CommandList->RSSetScissorRects(static_cast<UINT>(scissorRects.size()), scissorRects.data());
 }
 
 void CommandList::Dispatch(u32 numGroupsX, u32 numGroupsY, u32 numGroupsZ)
@@ -213,12 +265,4 @@ void CommandList::Dispatch(u32 numGroupsX, u32 numGroupsY, u32 numGroupsZ)
 	}
 
 	m_CommandList->Dispatch(numGroupsX, numGroupsY, numGroupsZ);
-}
-
-void CommandList::SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType)
-{
-}
-
-void CommandList::BindDescriptorHeaps()
-{
 }

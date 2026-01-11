@@ -31,8 +31,8 @@ namespace slate
 		[[nodiscard]] ComPtr<ID3D12Device2> GetDevice() const { return m_device; }
 		[[nodiscard]] glm::vec4 GetClearColor() const { return m_clearColor; }
 		void SetClearColor(const glm::vec4& clearColor) { m_clearColor = clearColor; }
-	private:
 		void CreateDevice(ComPtr<IDXGIAdapter4> adapter);
+	private:
 		void CreateCommandQueue(D3D12_COMMAND_LIST_TYPE type);
 		void CreateSwapChain(HWND hWnd, uint32_t bufferCount);
 		void CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors);

@@ -11,15 +11,17 @@ Resource::Resource(const std::wstring& name)
 
 Resource::Resource(const D3D12_RESOURCE_DESC& resourceDesc, const D3D12_CLEAR_VALUE* clearValue, const std::wstring& name)
 {
-    auto device = App.Device().GetDevice();
+    auto device = App.Renderer().D3D12Device();
 
     if (clearValue)
     {
         m_D3D12ClearValue = std::make_unique<D3D12_CLEAR_VALUE>(*clearValue);
     }
 
+    auto heapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
     log::ThrowIfFailed(device->CreateCommittedResource(
-        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+        &heapProperty,
         D3D12_HEAP_FLAG_NONE,
         &resourceDesc,
         D3D12_RESOURCE_STATE_COMMON,
@@ -80,11 +82,6 @@ Resource& Resource::operator=(Resource&& other)
     }
 
     return *this;
-}
-
-
-Resource::~Resource()
-{
 }
 
 void Resource::SetD3D12Resource(ComPtr<ID3D12Resource> d3d12Resource, const D3D12_CLEAR_VALUE* clearValue)

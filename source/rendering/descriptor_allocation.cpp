@@ -34,7 +34,7 @@ DescriptorAllocation::DescriptorAllocation(DescriptorAllocation&& allocation)
 	allocation.m_DescriptorSize = 0;
 }
 
-DescriptorAllocation& DescriptorAllocation::operator=(DescriptorAllocation&& other)
+DescriptorAllocation& DescriptorAllocation::operator=(DescriptorAllocation&& other) noexcept
 {
 	// Free this descriptor if it points to anything
 	Free();
@@ -76,7 +76,7 @@ void DescriptorAllocation::Free()
 {
 	if (!IsNull() && m_Page)
 	{
-		m_Page->Free(std::move(*this), static_cast<u64>(App.Device().GetFrameCount()));
+		m_Page->Free(std::move(*this), static_cast<u64>(App.Renderer().GetFrameCount()));
 
 		m_Descriptor.ptr = 0;
 		m_NumHandles = 0;

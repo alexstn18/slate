@@ -20,7 +20,7 @@ void CommandQueue::Initialize(D3D12_COMMAND_LIST_TYPE type)
 	desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 	desc.NodeMask = 0;
 
-	auto device = App.Device().GetDevice();
+	auto device = App.Renderer().D3D12Device();
 
 	log::ThrowIfFailed(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_CommandQueue)));
 	m_Fence = new Fence();

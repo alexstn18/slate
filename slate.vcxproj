@@ -151,7 +151,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="source\renderer.cpp" />
+    <ClCompile Include="source\rendering\adapter.cpp" />
     <ClCompile Include="source\rendering\buffer.cpp" />
+    <ClCompile Include="source\rendering\pipeline_state_object.cpp" />
     <ClCompile Include="source\rendering\resource_state_tracker.cpp" />
     <ClCompile Include="source\rendering\resource.cpp" />
     <ClCompile Include="source\rendering\dynamic_descriptor_heap.cpp" />
@@ -175,6 +178,7 @@
     <ClCompile Include="source\rendering\upload_buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\rendering\adapter.hpp" />
     <ClInclude Include="include\rendering\buffer.hpp" />
     <ClInclude Include="include\rendering\dynamic_descriptor_heap.hpp" />
     <ClInclude Include="include\rendering\descriptor_allocation.hpp" />
@@ -187,6 +191,7 @@
     <ClInclude Include="include\device.hpp" />
     <ClInclude Include="include\application.hpp" />
     <ClInclude Include="include\pch.hpp" />
+    <ClInclude Include="include\rendering\pipeline_state_object.hpp" />
     <ClInclude Include="include\rendering\root_signature.hpp" />
     <ClInclude Include="include\util\math.hpp" />
     <ClInclude Include="include\window.hpp" />
@@ -195,6 +200,7 @@
     <ClInclude Include="include\rendering\upload_buffer.hpp" />
     <ClInclude Include="include\rendering\resource.hpp" />
     <ClInclude Include="include\rendering\resource_state_tracker.hpp" />
+    <ClInclude Include="include\renderer.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\triangle.hlsl">
