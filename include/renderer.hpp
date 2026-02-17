@@ -29,7 +29,7 @@ namespace slate {
 		[[nodiscard]] Device& GetDevice() const noexcept { return *m_Device; }
 		[[nodiscard]] CommandQueue& GetCommandQueue() const noexcept { return *m_CommandQueue; }
 		[[nodiscard]] SwapChain& GetSwapChain() const noexcept { return *m_SwapChain; }
-		[[nodiscard]] CommandList& GetCommandList() const noexcept { return *m_CommandList; }
+		[[nodiscard]] std::shared_ptr<CommandList> GetCommandList() const noexcept { return m_CommandList; }
 		[[nodiscard]] RenderTarget& GetRenderTarget() const noexcept { return *m_RenderTarget; }
 		// d3d12 getters
 		[[nodiscard]] ComPtr<IDXGIAdapter4> D3D12Adapter() const noexcept;
@@ -40,6 +40,7 @@ namespace slate {
 
 		[[nodiscard]] u32 GetFrameCount() const noexcept { return m_NumBuffers; }
 
+		[[nodiscard]] const std::vector<ComPtr<ID3D12CommandAllocator>>& GetCommandAllocators() const noexcept { return m_CommandAllocators; }
 	private:
 		void EnableDebugLayer();
 		void InitializeCommandAllocators();

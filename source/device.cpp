@@ -298,7 +298,7 @@ void Device::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numD
 ComPtr<ID3D12CommandAllocator> Device::CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE type)
 {
 	// command list types:
-	//D3D12_COMMAND_LIST_TYPE_DIRECT: Specifies a command buffer that the GPU can execute.A direct command list doesn’t inherit any GPU state.
+	//D3D12_COMMAND_LIST_TYPE_DIRECT: Specifies a command buffer that the GPU can execute.A direct command list doesnï¿½t inherit any GPU state.
 	//D3D12_COMMAND_LIST_TYPE_BUNDLE : Specifies a command buffer that can be executed only directly via a direct command list.A bundle command list inherits all GPU state(except for the currently set pipeline state object and primitive topology).
 	//D3D12_COMMAND_LIST_TYPE_COMPUTE : Specifies a command buffer for computing.
 	//D3D12_COMMAND_LIST_TYPE_COPY : Specifies a command buffer for copying.

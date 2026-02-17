@@ -151,6 +151,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="source\rendering\model.cpp" />
+    <ClCompile Include="source\rendering\mesh.cpp" />
     <ClCompile Include="source\rendering\constant_buffer.cpp" />
     <ClCompile Include="source\rendering\index_buffer.cpp" />
     <ClCompile Include="source\rendering\render_target.cpp" />
@@ -209,6 +211,8 @@
     <ClInclude Include="include\rendering\render_target.hpp" />
     <ClInclude Include="include\rendering\index_buffer.hpp" />
     <ClInclude Include="include\rendering\vertex_buffer.hpp" />
+    <ClInclude Include="include\rendering\mesh.hpp" />
+    <ClInclude Include="include\rendering\model.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\triangle.hlsl">

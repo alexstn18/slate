@@ -101,7 +101,7 @@ void CommandList::TransitionBarrier(const std::shared_ptr<Resource>& resource, D
 	auto d3d12Resource = resource->D3D12Resource();
 	if (d3d12Resource) {
 		// The "before" state is not important
-		// It will be resolved the resource state tracker
+		// It will be resolved by the resource state tracker
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(d3d12Resource.Get(), D3D12_RESOURCE_STATE_COMMON, stateAfter, subResource);
 
 		m_ResourceStateTracker->ResourceBarrier(barrier);
