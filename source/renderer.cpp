@@ -31,7 +31,7 @@ Renderer::Renderer(u32 width, u32 height)
 	, m_Height{height}
 {
     m_Adapter = std::make_unique<Adapter>();
-    m_Device = std::make_unique<Device>(m_Width, m_Height);
+    m_Device = std::make_unique<Device>();
     m_CommandQueue = std::make_unique<CommandQueue>();
     m_SwapChain = std::make_unique<SwapChain>();
     m_DSVDescriptorHeap = std::make_unique<DescriptorHeap>();
@@ -104,10 +104,15 @@ void Renderer::Update()
 
 	float angle = float(totalTime * 90.0f);
 
-    glm::mat4 modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f));
-    glm::vec3 eyePos = glm::vec3(0.0f, 0.0f, -500.0f);
-    glm::mat4 view = glm::lookAtLH(eyePos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 projection = glm::perspectiveFovLH(glm::radians(45.0f), float(m_Width), float(m_Height), 0.1f, 1000.0f);
+    glm::mat4 modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 1.0f, 1.0f));
+
+    glm::vec3 eyePos = glm::vec3(0.0f, 0.0f, -10.0f);
+    glm::vec3 focusPoint = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::mat4 view = glm::lookAtLH(eyePos, focusPoint, up);
+
+    glm::mat4 projection = glm::perspectiveFovLH(glm::radians(45.0f), float(m_Width), float(m_Height), 0.1f, 100.0f);
+
     m_MVPMatrix = projection * view * modelMatrix;
 }
 
@@ -139,12 +144,8 @@ void Renderer::Render()
     m_CommandList->SetViewport(m_Viewport);
     m_CommandList->SetScissorRect(m_ScissorRect);
     m_CommandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    log::Info("Model has {} meshes", m_Model->GetMeshes().size());
     for (const auto& mesh : m_Model->GetMeshes())
     {
-        log::Info("VB valid: {}, IB valid: {}",
-            mesh->GetVertexBuffer() != nullptr,
-            mesh->GetIndexBuffer() != nullptr);
         m_CommandList->SetVertexBuffer(0, *mesh->GetVertexBuffer());
         m_CommandList->SetIndexBuffer(*mesh->GetIndexBuffer());
         m_CommandList->DrawIndexed(mesh->GetIndexCount(), 1, 0, 0, 0);

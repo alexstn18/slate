@@ -74,7 +74,7 @@ namespace slate {
 		u32 m_Height{ 720u };
 		static inline constexpr u32 m_NumBuffers{ 3u };
 
-		glm::vec4 m_ClearColor{ 1.0f, 0.0f, 0.0f, 1.0f };
+		glm::vec4 m_ClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
 		glm::mat4 m_MVPMatrix{};
 	};
 }
