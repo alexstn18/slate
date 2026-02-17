@@ -3,7 +3,7 @@
 #include "window.hpp"
 
 #include "rendering/adapter.hpp"
-#include "device.hpp"
+#include "rendering/device.hpp"
 #include "rendering/command_queue.hpp"
 #include "rendering/swap_chain.hpp"
 #include "rendering/descriptor_heap.hpp"

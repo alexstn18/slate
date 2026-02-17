@@ -180,7 +180,7 @@
     </ClCompile>
     <ClCompile Include="source\rendering\command_queue.cpp" />
     <ClCompile Include="source\rendering\descriptor_heap.cpp" />
-    <ClCompile Include="source\device.cpp" />
+    <ClCompile Include="source\rendering\device.cpp" />
     <ClCompile Include="source\application.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\rendering\root_signature.cpp" />
@@ -201,7 +201,7 @@
     <ClInclude Include="include\rendering\fence.hpp" />
     <ClInclude Include="include\rendering\command_queue.hpp" />
     <ClInclude Include="include\rendering\descriptor_heap.hpp" />
-    <ClInclude Include="include\device.hpp" />
+    <ClInclude Include="include\rendering\device.hpp" />
     <ClInclude Include="include\application.hpp" />
     <ClInclude Include="include\pch.hpp" />
     <ClInclude Include="include\rendering\pipeline_state_object.hpp" />

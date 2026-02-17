@@ -24,7 +24,7 @@
     <ClCompile Include="source\window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\device.cpp">
+    <ClCompile Include="source\rendering\device.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\rendering\descriptor_heap.cpp">
@@ -110,7 +110,7 @@
     <ClInclude Include="include\log.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\device.hpp">
+    <ClInclude Include="include\rendering\device.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\rendering\descriptor_heap.hpp">
