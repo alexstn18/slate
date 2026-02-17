@@ -15,6 +15,7 @@ namespace slate {
 	class PipelineStateObject;
 	class VertexBuffer;
 	class IndexBuffer;
+	class Model;
 
 	class Renderer {
 	public:
@@ -48,7 +49,6 @@ namespace slate {
 		void CreateDepthStencil();
 		void CreateRootSignature();
 		void CompileShaders();
-		void CreateVertexBuffer();
 
 		std::unique_ptr<Adapter>        m_Adapter{ nullptr };
 		std::unique_ptr<Device>         m_Device{ nullptr };
@@ -57,6 +57,7 @@ namespace slate {
 		std::unique_ptr<DescriptorHeap> m_RTVDescriptorHeap{ nullptr };
 		std::unique_ptr<DescriptorHeap> m_DSVDescriptorHeap{ nullptr };
 		std::shared_ptr<CommandList>	m_CommandList{ nullptr };
+		std::shared_ptr<Model>			m_Model{ nullptr };
 		std::unique_ptr<RenderTarget>   m_RenderTarget{ nullptr };
 		std::unique_ptr<RootSignature> m_RootSignature{ nullptr };
 		std::unique_ptr<PipelineStateObject> m_PipelineState{ nullptr };
@@ -73,7 +74,7 @@ namespace slate {
 		u32 m_Height{ 720u };
 		static inline constexpr u32 m_NumBuffers{ 3u };
 
-		glm::vec4 m_ClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
+		glm::vec4 m_ClearColor{ 1.0f, 0.0f, 0.0f, 1.0f };
 		glm::mat4 m_MVPMatrix{};
 	};
 }

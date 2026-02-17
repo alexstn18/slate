@@ -114,7 +114,7 @@ UploadBuffer::Allocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t
 	Allocation alloc;
 	alloc.CPU = static_cast<uint8_t*>(m_CPUPtr) + m_Offset;
 	alloc.GPU = m_GPUPtr + m_Offset;
-
+		
 	m_Offset += alignedSize;
 
 	return alloc;

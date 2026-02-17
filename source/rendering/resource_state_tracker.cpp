@@ -152,7 +152,7 @@ void ResourceStateTracker::FlushResourceBarriers(const std::shared_ptr<CommandLi
 
 	UINT numBarriers{ static_cast<UINT>(m_ResourceBarriers.size()) };
 
-	log::Info("FlushResourceBarriers: {} barriers to flush", numBarriers);
+	//log::Info("FlushResourceBarriers: {} barriers to flush", numBarriers);
 
 	if (numBarriers > 0) {
 		auto d3d12CommandList = commandList->Get();

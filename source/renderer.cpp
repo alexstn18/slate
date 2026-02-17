@@ -15,6 +15,9 @@
 #include "rendering/index_buffer.hpp"
 #include "rendering/resource_state_tracker.hpp"
 
+#include "rendering/model.hpp"
+#include "rendering/mesh.hpp"
+
 #include <glm/glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
@@ -60,9 +63,12 @@ bool Renderer::Initialize()
 	m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, float(m_Width), float(m_Height));
 	m_ScissorRect = CD3DX12_RECT(0, 0, LONG(m_Width), LONG(m_Height));
 
+    log::Info("Viewport: {}x{}", m_Viewport.Width, m_Viewport.Height);
+    log::Info("Scissor: {}x{}", m_ScissorRect.right, m_ScissorRect.bottom);
+
+    m_Model = Model::Load("suzanne.obj", *m_CommandList, *m_CommandQueue, m_CommandAllocators[0]);
 	CreateRootSignature();
 	CompileShaders();
-	CreateVertexBuffer();
 
 	// Setup render target
 	auto rtv = m_RTVDescriptorHeap->GetCPUHandle(0);
@@ -98,16 +104,11 @@ void Renderer::Update()
 
 	float angle = float(totalTime * 90.0f);
 
-	glm::mat4 modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 1.0f, 1.0f));
-
-	glm::vec3 eyePos = glm::vec3(0.0f, 0.0f, -10.0f);
-	glm::vec3 focusPoint = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-	glm::mat4 view = glm::lookAtLH(eyePos, focusPoint, up);
-
-	glm::mat4 projection = glm::perspectiveFovLH(glm::radians(45.0f), float(m_Width), float(m_Height), 0.1f, 100.0f);
-
-	m_MVPMatrix = projection * view * modelMatrix;
+    glm::mat4 modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f));
+    glm::vec3 eyePos = glm::vec3(0.0f, 0.0f, -500.0f);
+    glm::mat4 view = glm::lookAtLH(eyePos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 projection = glm::perspectiveFovLH(glm::radians(45.0f), float(m_Width), float(m_Height), 0.1f, 1000.0f);
+    m_MVPMatrix = projection * view * modelMatrix;
 }
 
 void Renderer::Render()
@@ -138,9 +139,16 @@ void Renderer::Render()
     m_CommandList->SetViewport(m_Viewport);
     m_CommandList->SetScissorRect(m_ScissorRect);
     m_CommandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_CommandList->SetVertexBuffer(0, *m_VertexBuffer);
-    m_CommandList->SetIndexBuffer(*m_IndexBuffer);
-    m_CommandList->DrawIndexed(36, 1, 0, 0, 0);
+    log::Info("Model has {} meshes", m_Model->GetMeshes().size());
+    for (const auto& mesh : m_Model->GetMeshes())
+    {
+        log::Info("VB valid: {}, IB valid: {}",
+            mesh->GetVertexBuffer() != nullptr,
+            mesh->GetIndexBuffer() != nullptr);
+        m_CommandList->SetVertexBuffer(0, *mesh->GetVertexBuffer());
+        m_CommandList->SetIndexBuffer(*mesh->GetIndexBuffer());
+        m_CommandList->DrawIndexed(mesh->GetIndexCount(), 1, 0, 0, 0);
+    }
 
     // Transition back to present
     barrier = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -266,7 +274,7 @@ void Renderer::CompileShaders()
         "PSMain", "ps_5_0", 0, 0, &pixelShader, nullptr));
 
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },  // 3 floats, not 4
         { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
@@ -287,41 +295,4 @@ void Renderer::CompileShaders()
     psoDesc.SampleDesc.Count = 1;
 
     m_PipelineState->InitializeAsGraphicsPSO(psoDesc);
-}
-
-void Renderer::CreateVertexBuffer()
-{
-    struct Vertex {
-        glm::vec3 position;
-        glm::vec4 color;
-    };
-
-    Vertex cubeVertices[] = {
-        { glm::vec3(-1.0f, -1.0f,  1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
-        { glm::vec3(1.0f, -1.0f,  1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
-        { glm::vec3(1.0f,  1.0f,  1.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
-        { glm::vec3(-1.0f,  1.0f,  1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
-        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec4(1.0f, 0.0f, 1.0f, 1.0f) },
-        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec4(0.0f, 1.0f, 1.0f, 1.0f) },
-        { glm::vec3(1.0f,  1.0f, -1.0f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f) },
-        { glm::vec3(-1.0f,  1.0f, -1.0f), glm::vec4(0.5f, 0.5f, 0.5f, 1.0f) }
-    };
-
-    u32 cubeIndices[] = {
-        0,1,2, 2,3,0,  5,4,7, 7,6,5,  4,0,3, 3,7,4,
-        1,5,6, 6,2,1,  3,2,6, 6,7,3,  4,5,1, 1,0,4
-    };
-
-    m_CommandList->Reset(m_CommandAllocators[0]);
-
-    m_VertexBuffer = std::make_unique<VertexBuffer>(8, sizeof(Vertex));
-    m_IndexBuffer = std::make_unique<IndexBuffer>(36, DXGI_FORMAT_R32_UINT);
-
-    m_CommandList->UploadBufferData(*m_VertexBuffer, cubeVertices, sizeof(cubeVertices));
-    m_CommandList->UploadBufferData(*m_IndexBuffer, cubeIndices, sizeof(cubeIndices));
-    m_CommandList->Close();
-    u64 fenceValue = m_CommandQueue->ExecuteCommandLists({ m_CommandList->Get().Get() });
-
-    // wait for upload to complete before rendering
-    m_CommandQueue->WaitForFenceValue(fenceValue);
 }

@@ -22,11 +22,10 @@ void Mesh::CreateBuffers(CommandList& commandList)
     m_VertexBuffer = std::make_shared<VertexBuffer>(vertexCount, sizeof(Vertex));
     m_IndexBuffer = std::make_shared<IndexBuffer>(indexCount, DXGI_FORMAT_R32_UINT);
 
-    commandList.UploadBufferData(*m_VertexBuffer, m_Vertices.data(), vertexCount);
-    commandList.UploadBufferData(*m_IndexBuffer, m_Indices.data(), indexCount);
+    commandList.UploadBufferData(*m_VertexBuffer, m_Vertices.data(), vertexCount * sizeof(Vertex));
+    commandList.UploadBufferData(*m_IndexBuffer, m_Indices.data(), indexCount * sizeof(u32));
 
-    m_Vertices.clear();
-    m_Vertices.shrink_to_fit();
-    m_Indices.clear();
-    m_Indices.shrink_to_fit();
+    log::Info("Uploading {} vertices ({} bytes), {} indices ({} bytes)",
+        vertexCount, vertexCount * sizeof(Vertex),
+        indexCount, indexCount * sizeof(uint32_t));
 }
