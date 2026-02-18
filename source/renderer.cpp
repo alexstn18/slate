@@ -25,6 +25,8 @@
 
 #include <d3dcompiler.h>
 
+#include "interface.hpp"
+
 using namespace slate;
 
 Renderer::Renderer(u32 width, u32 height)
@@ -41,6 +43,7 @@ Renderer::Renderer(u32 width, u32 height)
     m_RenderTarget = std::make_unique<RenderTarget>();
     m_RootSignature = std::make_unique<RootSignature>();
     m_PipelineState = std::make_unique<PipelineStateObject>();
+    m_Interface = std::make_unique<Interface>();
 }
 
 bool Renderer::Initialize()
@@ -80,7 +83,15 @@ bool Renderer::Initialize()
 	m_RenderTarget->SetRenderTargetView(rtv);
 	m_RenderTarget->SetDepthStencilView(dsv);
 
+    m_Interface->Initialize();
+
 	return true;
+}
+
+void Renderer::Shutdown()
+{
+    m_CommandQueue->Flush();
+    m_Interface->Shutdown();
 }
 
 void Renderer::Update()
@@ -118,6 +129,9 @@ void Renderer::Update()
     glm::mat4 projection = glm::perspectiveFovLH(glm::radians(45.0f), float(m_Width), float(m_Height), 0.1f, 100.0f);
 
     m_MVPMatrix = projection * view * modelMatrix;
+
+    m_Interface->NewFrame();
+    m_Interface->Update(deltaSeconds);
 }
 
 void Renderer::Render()
@@ -165,6 +179,8 @@ void Renderer::Render()
 
         m_CommandList->DrawIndexed(u32(mesh->GetIndexCount()), 1, 0, 0, 0);
     }
+
+    m_Interface->Render();
 
     // Transition back to present
     barrier = CD3DX12_RESOURCE_BARRIER::Transition(

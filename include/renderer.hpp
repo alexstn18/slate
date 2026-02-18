@@ -16,6 +16,7 @@ namespace slate {
 	class VertexBuffer;
 	class IndexBuffer;
 	class Model;
+	class Interface;
 
 	class Renderer {
 	public:
@@ -23,6 +24,7 @@ namespace slate {
 		virtual ~Renderer() = default;
 
 		bool Initialize();
+		void Shutdown();
 		void Update();
 		void Render();
 
@@ -70,6 +72,7 @@ namespace slate {
 		std::unique_ptr<PipelineStateObject> m_PipelineState{ nullptr };
 		std::unique_ptr<VertexBuffer> m_VertexBuffer{ nullptr };
 		std::unique_ptr<IndexBuffer> m_IndexBuffer{ nullptr };
+		std::unique_ptr<Interface> m_Interface{ nullptr };
 
 		D3D12_VIEWPORT m_Viewport;
 		D3D12_RECT m_ScissorRect;
@@ -80,7 +83,7 @@ namespace slate {
 
 		u32 m_Width{ 1280u };
 		u32 m_Height{ 720u };
-		u32 m_NextSRVIndex{ 0u };
+		u32 m_NextSRVIndex{ 1u };
 		static inline constexpr u32 m_NumBuffers{ 3u };
 
 		glm::vec4 m_ClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };

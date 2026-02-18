@@ -29,7 +29,7 @@ void DescriptorHeap::Initialize(HeapType type, u32 maxDescriptors)
 
 	m_DescriptorSize = device->GetDescriptorHandleIncrementSize(heapType);
 	m_MaxIndex = maxDescriptors;
-	m_CurrentIndex = 0;
+	m_CurrentIndex = 1;
 	log::Info("Created descriptor heap: type={}, descriptors={}, size={}", HeapTypeAsString(type), maxDescriptors, m_DescriptorSize);
 }
 
