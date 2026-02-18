@@ -148,7 +148,7 @@ void Renderer::Render()
     {
         m_CommandList->SetVertexBuffer(0, *mesh->GetVertexBuffer());
         m_CommandList->SetIndexBuffer(*mesh->GetIndexBuffer());
-        m_CommandList->DrawIndexed(mesh->GetIndexCount(), 1, 0, 0, 0);
+        m_CommandList->DrawIndexed(u32(mesh->GetIndexCount()), 1, 0, 0, 0);
     }
 
     // Transition back to present
@@ -164,6 +164,11 @@ void Renderer::Render()
 
     m_SwapChain->Present(true);
     m_CommandQueue->WaitForFenceValue(fenceValue);
+}
+
+void Renderer::TrackUpload(ComPtr<ID3D12Resource> resource)
+{
+    m_PendingUploads.push_back(std::move(resource));
 }
 
 ComPtr<IDXGIAdapter4> Renderer::D3D12Adapter() const noexcept
@@ -296,4 +301,9 @@ void Renderer::CompileShaders()
     psoDesc.SampleDesc.Count = 1;
 
     m_PipelineState->InitializeAsGraphicsPSO(psoDesc);
+}
+
+void Renderer::FlushUploads()
+{
+    m_PendingUploads.clear();
 }

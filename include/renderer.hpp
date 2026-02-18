@@ -26,6 +26,9 @@ namespace slate {
 		void Update();
 		void Render();
 
+		void TrackUpload(ComPtr<ID3D12Resource> resource);
+		void FlushUploads();
+
 		[[nodiscard]] Adapter& GetAdapter() const noexcept { return *m_Adapter; }
 		[[nodiscard]] Device& GetDevice() const noexcept { return *m_Device; }
 		[[nodiscard]] CommandQueue& GetCommandQueue() const noexcept { return *m_CommandQueue; }
@@ -69,6 +72,7 @@ namespace slate {
 		ComPtr<ID3D12Resource> m_DepthStencilBuffer{ nullptr };
 
 		std::vector<ComPtr<ID3D12CommandAllocator>> m_CommandAllocators{nullptr};
+		std::vector<ComPtr<ID3D12Resource>> m_PendingUploads{ nullptr };
 
 		u32 m_Width{ 1280u };
 		u32 m_Height{ 720u };

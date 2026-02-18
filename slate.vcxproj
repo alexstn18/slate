@@ -188,6 +188,7 @@
     <ClCompile Include="source\rendering\swap_chain.cpp" />
     <ClCompile Include="source\rendering\upload_buffer.cpp" />
     <ClCompile Include="source\rendering\vertex_buffer.cpp" />
+    <ClCompile Include="source\rendering\texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\rendering\constant_buffer.hpp" />
@@ -219,6 +220,7 @@
     <ClInclude Include="include\rendering\vertex_buffer.hpp" />
     <ClInclude Include="include\rendering\mesh.hpp" />
     <ClInclude Include="include\rendering\model.hpp" />
+    <ClInclude Include="include\rendering\texture.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\triangle.hlsl">

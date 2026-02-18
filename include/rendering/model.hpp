@@ -1,10 +1,12 @@
 #pragma once
+
 struct aiNode;
 struct aiScene;
 struct aiMesh;
 
 namespace slate {
 	class Mesh;
+	class Texture;
 
 	class Model {
 	public:
@@ -19,5 +21,6 @@ namespace slate {
 		std::shared_ptr<Mesh> ProcessMesh(::aiMesh* mesh/*, const ::aiScene* scene*/);
 
 		std::vector<std::shared_ptr<Mesh>> m_Meshes{};
+		std::vector<std::shared_ptr<Texture>> m_Textures{};
 	};
 }
