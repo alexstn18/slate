@@ -28,6 +28,7 @@ namespace slate {
 
 		void TrackUpload(ComPtr<ID3D12Resource> resource);
 		void FlushUploads();
+		[[nodiscard]] u32 IncrementTextureCount() noexcept { return m_NextSRVIndex++; }
 
 		[[nodiscard]] Adapter& GetAdapter() const noexcept { return *m_Adapter; }
 		[[nodiscard]] Device& GetDevice() const noexcept { return *m_Device; }
@@ -35,6 +36,8 @@ namespace slate {
 		[[nodiscard]] SwapChain& GetSwapChain() const noexcept { return *m_SwapChain; }
 		[[nodiscard]] std::shared_ptr<CommandList> GetCommandList() const noexcept { return m_CommandList; }
 		[[nodiscard]] RenderTarget& GetRenderTarget() const noexcept { return *m_RenderTarget; }
+		[[nodiscard]] DescriptorHeap& GetSRVDescriptorHeap() const noexcept { return *m_SRVDescriptorHeap; }
+
 		// d3d12 getters
 		[[nodiscard]] ComPtr<IDXGIAdapter4> D3D12Adapter() const noexcept;
 		[[nodiscard]] ComPtr<ID3D12Device2> D3D12Device() const noexcept;
@@ -59,6 +62,7 @@ namespace slate {
 		std::unique_ptr<SwapChain>		m_SwapChain{ nullptr };
 		std::unique_ptr<DescriptorHeap> m_RTVDescriptorHeap{ nullptr };
 		std::unique_ptr<DescriptorHeap> m_DSVDescriptorHeap{ nullptr };
+		std::unique_ptr<DescriptorHeap> m_SRVDescriptorHeap{ nullptr };
 		std::shared_ptr<CommandList>	m_CommandList{ nullptr };
 		std::shared_ptr<Model>			m_Model{ nullptr };
 		std::unique_ptr<RenderTarget>   m_RenderTarget{ nullptr };
@@ -76,6 +80,7 @@ namespace slate {
 
 		u32 m_Width{ 1280u };
 		u32 m_Height{ 720u };
+		u32 m_NextSRVIndex{ 0u };
 		static inline constexpr u32 m_NumBuffers{ 3u };
 
 		glm::vec4 m_ClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };

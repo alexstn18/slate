@@ -8,9 +8,11 @@
 using namespace slate;
 
 Mesh::Mesh(const std::vector<Vertex>& vertices,
-           const std::vector<u32>& indices)
+           const std::vector<u32>& indices,
+           const Material& material)
     : m_Vertices(vertices.data(), vertices.data() + vertices.size())
     , m_Indices(indices.data(), indices.data() + indices.size())
+    , m_Material(std::make_shared<Material>(material))
 {
 }
 

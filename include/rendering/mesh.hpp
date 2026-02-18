@@ -1,4 +1,6 @@
 #pragma once
+#include "rendering/render_components.hpp"
+
 namespace slate {
 	class VertexBuffer;
 	class IndexBuffer;
@@ -14,12 +16,14 @@ namespace slate {
 	class Mesh {
 	public:
 		Mesh(const std::vector<Vertex>& vertices,
-			 const std::vector<u32>& indices);
+			 const std::vector<u32>& indices,
+			 const Material& material);
 		void CreateBuffers(CommandList& commandList);
 
 		[[nodiscard]] std::shared_ptr<VertexBuffer> GetVertexBuffer() const noexcept { return m_VertexBuffer; }
 		[[nodiscard]] std::shared_ptr<IndexBuffer> GetIndexBuffer() const noexcept { return m_IndexBuffer; }
-	
+		[[nodiscard]] std::shared_ptr<Material> GetMaterial() const noexcept { return m_Material; }
+
 		[[nodiscard]] size_t GetVertexCount() const noexcept { return m_Vertices.size(); }
 		[[nodiscard]] size_t GetIndexCount() const noexcept { return m_Indices.size(); }
 	private:
@@ -28,5 +32,6 @@ namespace slate {
 
 		std::shared_ptr<VertexBuffer> m_VertexBuffer{ nullptr };
 		std::shared_ptr<IndexBuffer> m_IndexBuffer{ nullptr };
+		std::shared_ptr<Material> m_Material{ nullptr };
 	};
 }

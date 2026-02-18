@@ -3,6 +3,8 @@
 struct aiNode;
 struct aiScene;
 struct aiMesh;
+struct aiMaterial;
+enum aiTextureType;
 
 namespace slate {
 	class Mesh;
@@ -18,9 +20,10 @@ namespace slate {
 
 	private:
 		void ProcessNode(::aiNode* node, const ::aiScene* scene);
-		std::shared_ptr<Mesh> ProcessMesh(::aiMesh* mesh/*, const ::aiScene* scene*/);
+		std::shared_ptr<Mesh> ProcessMesh(::aiMesh* mesh, const ::aiScene* scene);
+		std::shared_ptr<Texture> LoadMaterialTexture(const ::aiMaterial* mat, ::aiTextureType type, const ::aiScene* scene);
 
 		std::vector<std::shared_ptr<Mesh>> m_Meshes{};
-		std::vector<std::shared_ptr<Texture>> m_Textures{};
+		std::unordered_map<std::string, std::shared_ptr<Texture>> m_TextureCache{};
 	};
 }

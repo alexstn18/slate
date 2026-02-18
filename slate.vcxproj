@@ -161,6 +161,7 @@
     <ClCompile Include="source\rendering\mesh.cpp" />
     <ClCompile Include="source\rendering\constant_buffer.cpp" />
     <ClCompile Include="source\rendering\index_buffer.cpp" />
+    <ClCompile Include="source\rendering\render_components.cpp" />
     <ClCompile Include="source\rendering\render_target.cpp" />
     <ClCompile Include="source\renderer.cpp" />
     <ClCompile Include="source\rendering\adapter.cpp" />
@@ -206,6 +207,7 @@
     <ClInclude Include="include\application.hpp" />
     <ClInclude Include="include\pch.hpp" />
     <ClInclude Include="include\rendering\pipeline_state_object.hpp" />
+    <ClInclude Include="include\rendering\render_components.hpp" />
     <ClInclude Include="include\rendering\root_signature.hpp" />
     <ClInclude Include="include\util\math.hpp" />
     <ClInclude Include="include\window.hpp" />

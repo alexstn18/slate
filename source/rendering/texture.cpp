@@ -2,6 +2,9 @@
 #include "rendering/resource.hpp"
 #include "rendering/texture.hpp"
 #include "rendering/resource_state_tracker.hpp"
+#include "rendering/descriptor_heap.hpp"
+
+#include "assimp/texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
@@ -10,9 +13,6 @@ using namespace slate;
 
 Texture::Texture(const std::filesystem::path& path, const std::wstring& name)
 {
-	auto device = App.Renderer().D3D12Device();
-	auto commandList = App.Renderer().D3D12CommandList();
-
 	i32 width{}, height{}, components{};
 	u8* textureBuffer = stbi_load(path.string().c_str(), &width, &height, &components, 4);
 
@@ -20,11 +20,53 @@ Texture::Texture(const std::filesystem::path& path, const std::wstring& name)
 		log::Critical("Could not load texture from path: {}", path.string());
 	}
 
+	Initialize(name, width, height, textureBuffer, true);
+}
+
+Texture::Texture(const aiTexture* embedded, const std::wstring& name)
+{
+	i32 width{}, height{}, components{};
+	u8* textureBuffer{ nullptr };
+	bool stbAllocated{ false };
+
+	if (embedded->mHeight == 0) {
+		textureBuffer = stbi_load_from_memory(
+			reinterpret_cast<const stbi_uc*>(embedded->pcData),
+			embedded->mWidth,
+			&width, &height, &components, 4
+		);
+
+		stbAllocated = true;
+	}
+	else {
+		width = embedded->mWidth;
+		height = embedded->mHeight;
+		textureBuffer = reinterpret_cast<u8*>(embedded->pcData);
+	}
+	Initialize(name, width, height, textureBuffer, stbAllocated);
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetShaderResourceView(const D3D12_SHADER_RESOURCE_VIEW_DESC*) const
+{
+	return m_SRVHandle;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetUnorderedAccessView(const D3D12_UNORDERED_ACCESS_VIEW_DESC*) const
+{
+	throw std::exception("Texture does not support UAV");
+}
+
+void Texture::Initialize(const std::wstring& name, int width, int height, void* textureBuffer, bool freeBuffer)
+{
+	auto device = App.Renderer().D3D12Device();
+	auto commandList = App.Renderer().D3D12CommandList();
+
 	m_ResourceDesc.MipLevels = 1;
 	// @TODO: add function for DXGI_FORMAT checking
 	m_ResourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	m_ResourceDesc.Width = width;
 	m_ResourceDesc.Height = height;
+	m_ResourceDesc.DepthOrArraySize = 1;
 	m_ResourceDesc.SampleDesc.Count = 1;
 	m_ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 
@@ -66,9 +108,9 @@ Texture::Texture(const std::filesystem::path& path, const std::wstring& name)
 
 	UpdateSubresources(
 		commandList.Get(),
-		m_D3D12Resource.Get(), 
-		uploadResource.Get(), 
-		0, 0, 1, 
+		m_D3D12Resource.Get(),
+		uploadResource.Get(),
+		0, 0, 1,
 		&textureData
 	);
 
@@ -80,12 +122,30 @@ Texture::Texture(const std::filesystem::path& path, const std::wstring& name)
 
 	commandList->ResourceBarrier(1, &barrier);
 
-	stbi_image_free(textureBuffer);
+	if(freeBuffer) stbi_image_free(textureBuffer);
 
 	ResourceStateTracker::AddGlobalResourceState(
 		m_D3D12Resource.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Format = m_ResourceDesc.Format;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = m_ResourceDesc.MipLevels;
+
+	auto& srvDscHeap = App.Renderer().GetSRVDescriptorHeap();
+
+	u32 slot = App.Renderer().IncrementTextureCount();
+	m_SRVHandle = srvDscHeap.GetCPUHandle(slot);
+	m_GPUHandle = srvDscHeap.GetGPUHandle(slot);
+
+	device->CreateShaderResourceView(
+		m_D3D12Resource.Get(),
+		&srvDesc,
+		m_SRVHandle
+	);
+
 	SetName(name);
 
-	App.Renderer().TrackUpload(uploadResource);
+	App.Renderer().TrackUpload(std::move(uploadResource));
 }

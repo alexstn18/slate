@@ -16,6 +16,7 @@ namespace slate
 		RootSignature& AddDescriptorTable();
 		RootSignature& AddSRVs(u32 baseRegister, u32 count);
 		RootSignature& AddUAVs(u32 baseRegister, u32 count);
+		RootSignature& AddStaticSampler(u32 shaderRegister);
 
 		void Initialize();
 
@@ -49,6 +50,7 @@ namespace slate
 		};
 
 		std::vector<D3D12_ROOT_PARAMETER> m_Params{};
+		std::vector<D3D12_STATIC_SAMPLER_DESC> m_StaticSamplers{};
 		std::vector<Table> m_Tables{};
 	};
 }

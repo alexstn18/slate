@@ -1,23 +1,32 @@
-cbuffer ModelViewProjectionCB : register(b0)
+struct VSInput
 {
-    matrix MVP;
+    float3 Position : POSITION;
+    float2 TexCoord : TEXCOORD;
 };
 
 struct PSInput
 {
-    float4 position : SV_POSITION;
-    float4 color : COLOR;
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD;
 };
 
-PSInput VSMain(float3 position : POSITION, float4 color : COLOR)
+Texture2D albedoTexture : register(t0);
+SamplerState linearSampler : register(s0);
+
+cbuffer Constants : register(b0)
 {
-    PSInput result;
-    result.position = mul(MVP, float4(position, 1.0));
-    result.color = color;
-    return result;
+    float4x4 MVP;
+};
+
+PSInput VSMain(VSInput input)
+{
+    PSInput output;
+    output.Position = mul(MVP, float4(input.Position, 1.0f));
+    output.TexCoord = input.TexCoord;
+    return output;
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    return input.color;
+    return albedoTexture.Sample(linearSampler, input.TexCoord);
 }

@@ -3,6 +3,7 @@
 
 using namespace slate;
 
+
 void RootSignature::Initialize()
 {
     auto device = App.Renderer().D3D12Device();
@@ -57,8 +58,8 @@ void RootSignature::Initialize()
     // Store the descriptor for later queries
     m_RootSignatureDesc.NumParameters = (UINT)m_Params.size();
     m_RootSignatureDesc.pParameters = m_Params.data();
-    m_RootSignatureDesc.NumStaticSamplers = 0;
-    m_RootSignatureDesc.pStaticSamplers = nullptr;
+    m_RootSignatureDesc.NumStaticSamplers = (UINT)m_StaticSamplers.size();
+    m_RootSignatureDesc.pStaticSamplers = m_StaticSamplers.data();
     m_RootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
     ComPtr<ID3DBlob> blob;
@@ -144,5 +145,21 @@ RootSignature& RootSignature::AddUAVs(uint32_t baseRegister, uint32_t count)
     range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
     m_Tables.back().ranges.push_back(range);
+    return *this;
+}
+
+RootSignature& RootSignature::AddStaticSampler(u32 shaderRegister)
+{
+    D3D12_STATIC_SAMPLER_DESC sampler = {};
+    
+    sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    sampler.ShaderRegister = shaderRegister;
+    sampler.RegisterSpace = 0;
+    sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    m_StaticSamplers.push_back(sampler);
     return *this;
 }

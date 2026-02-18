@@ -17,6 +17,7 @@
 
 #include "rendering/model.hpp"
 #include "rendering/mesh.hpp"
+#include "rendering/texture.hpp"
 
 #include <glm/glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -36,6 +37,7 @@ Renderer::Renderer(u32 width, u32 height)
     m_SwapChain = std::make_unique<SwapChain>();
     m_DSVDescriptorHeap = std::make_unique<DescriptorHeap>();
     m_RTVDescriptorHeap = std::make_unique<DescriptorHeap>();
+    m_SRVDescriptorHeap = std::make_unique<DescriptorHeap>();
     m_RenderTarget = std::make_unique<RenderTarget>();
     m_RootSignature = std::make_unique<RootSignature>();
     m_PipelineState = std::make_unique<PipelineStateObject>();
@@ -54,6 +56,8 @@ bool Renderer::Initialize()
 	m_SwapChain->Initialize(hWnd, m_Width, m_Height, m_NumBuffers);
 	m_DSVDescriptorHeap->Initialize(HeapType::DSV, device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV));
 	m_RTVDescriptorHeap->Initialize(HeapType::RTV, device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+    static constexpr u32 MAX_TEXTURES = 1024u;
+	m_SRVDescriptorHeap->Initialize(HeapType::SRV, MAX_TEXTURES);
 	InitializeCommandAllocators();
     m_CommandList = std::make_shared<CommandList>();
     m_CommandList->Initialize();
@@ -66,7 +70,7 @@ bool Renderer::Initialize()
     log::Info("Viewport: {}x{}", m_Viewport.Width, m_Viewport.Height);
     log::Info("Scissor: {}x{}", m_ScissorRect.right, m_ScissorRect.bottom);
 
-    m_Model = Model::Load("suzanne.obj", *m_CommandList, *m_CommandQueue, m_CommandAllocators[0]);
+    m_Model = Model::Load("DamagedHelmet.glb", *m_CommandList, *m_CommandQueue, m_CommandAllocators[0]);
 	CreateRootSignature();
 	CompileShaders();
 
@@ -102,11 +106,11 @@ void Renderer::Update()
 		elapsedSeconds -= 1.0;
 	}
 
-	float angle = float(totalTime * 90.0f);
+	float angle = float(totalTime * 45.0f);
 
-    glm::mat4 modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 1.0f, 1.0f));
+    glm::mat4 modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
 
-    glm::vec3 eyePos = glm::vec3(0.0f, 0.0f, -10.0f);
+    glm::vec3 eyePos = glm::vec3(0.0f, 0.0f, 5.0f);
     glm::vec3 focusPoint = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::mat4 view = glm::lookAtLH(eyePos, focusPoint, up);
@@ -141,6 +145,8 @@ void Renderer::Render()
     m_CommandList->SetPipelineState(std::shared_ptr<PipelineStateObject>(m_PipelineState.get(), [](auto*) {}));
     m_CommandList->SetGraphicsRootSignature(std::shared_ptr<RootSignature>(m_RootSignature.get(), [](auto*) {}));
     m_CommandList->SetGraphics32BitConstants(0, sizeof(glm::mat4) / 4, &m_MVPMatrix);
+    ID3D12DescriptorHeap* heaps[] = { m_SRVDescriptorHeap->Get().Get() };
+    m_CommandList->Get()->SetDescriptorHeaps(1, heaps);
     m_CommandList->SetViewport(m_Viewport);
     m_CommandList->SetScissorRect(m_ScissorRect);
     m_CommandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -148,6 +154,15 @@ void Renderer::Render()
     {
         m_CommandList->SetVertexBuffer(0, *mesh->GetVertexBuffer());
         m_CommandList->SetIndexBuffer(*mesh->GetIndexBuffer());
+
+        // bind this mesh's textures
+        const auto& material = mesh->GetMaterial();
+        if (material->Albedo) {
+            m_CommandList->Get()->SetGraphicsRootDescriptorTable(
+                1, material->Albedo->GetGPUHandle()
+            );
+        }
+
         m_CommandList->DrawIndexed(u32(mesh->GetIndexCount()), 1, 0, 0, 0);
     }
 
@@ -263,7 +278,10 @@ void Renderer::CreateDepthStencil()
 
 void Renderer::CreateRootSignature()
 {
-    m_RootSignature->AddRootConstants(0, sizeof(glm::mat4) / 4);
+    m_RootSignature->AddRootConstants(0u, sizeof(glm::mat4) / 4)
+                    .AddDescriptorTable()
+                    .AddSRVs(0u, 1u)
+                    .AddStaticSampler(0u);
     m_RootSignature->Initialize();
 }
 
@@ -280,8 +298,11 @@ void Renderer::CompileShaders()
         "PSMain", "ps_5_0", 0, 0, &pixelShader, nullptr));
 
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },  // 3 floats, not 4
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        { "POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD",  0, DXGI_FORMAT_R32G32_FLOAT,    0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TANGENT",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
