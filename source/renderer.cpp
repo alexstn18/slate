@@ -108,7 +108,7 @@ void Renderer::Update()
 
 	float angle = float(totalTime * 45.0f);
 
-    glm::mat4 modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(1.0f, 1.0f, 1.0f));
 
     glm::vec3 eyePos = glm::vec3(0.0f, 0.0f, 5.0f);
     glm::vec3 focusPoint = glm::vec3(0.0f, 0.0f, 0.0f);

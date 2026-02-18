@@ -43,6 +43,7 @@ Texture::Texture(const aiTexture* embedded, const std::wstring& name)
 		height = embedded->mHeight;
 		textureBuffer = reinterpret_cast<u8*>(embedded->pcData);
 	}
+
 	Initialize(name, width, height, textureBuffer, stbAllocated);
 }
 

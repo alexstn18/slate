@@ -15,9 +15,15 @@ using namespace slate;
 Model::Model(const std::filesystem::path& filePath)
 {
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(filePath.string(), 
-		aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
+	importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, 80.0f);
+	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_POINT | aiPrimitiveType_LINE);
 
+	unsigned int preprocessFlags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
+		aiProcessPreset_TargetRealtime_MaxQuality | aiProcess_OptimizeGraph |
+		aiProcess_ConvertToLeftHanded | aiProcess_GenBoundingBoxes;
+
+	const aiScene* scene = importer.ReadFile(filePath.string(), preprocessFlags);
+	
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || 
 		!scene->mRootNode) {
 		log::Error("Assimp: {}", importer.GetErrorString());
