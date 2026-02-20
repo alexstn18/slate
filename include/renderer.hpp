@@ -88,7 +88,7 @@ namespace slate {
 		static inline constexpr u32 m_NumBuffers{ 3u };
 
 		glm::vec4 m_ClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
-		glm::mat4 m_VPMatrix{};
+		glm::mat4 m_MVPMatrix{};
 
 		struct LightInfo {
 			glm::vec3 Color;
@@ -102,9 +102,8 @@ namespace slate {
 		};
 
 		struct Constants {
-			glm::mat4 Model;
-			glm::mat4 VP;
-			//LightInfo lightInfo;
+			glm::mat4 NormalMatrix;
+			glm::mat4 MVP;
 		}m_Constants;
 
 		Light m_Light;

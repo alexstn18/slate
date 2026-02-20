@@ -89,7 +89,7 @@ bool Renderer::Initialize()
     m_Light.Position = glm::vec3(3.0f, 3.0f, 5.0f);
     m_Light.Intensity = 1.0f;
 
-    m_Constants.VP = m_VPMatrix;
+    m_Constants.MVP = m_MVPMatrix;
     //m_Constants.lightInfo.LightToLightInfo(m_Light);
 
 	return true;
@@ -135,10 +135,10 @@ void Renderer::Update()
 
     glm::mat4 projection = glm::perspectiveFovLH(glm::radians(45.0f), float(m_Width), float(m_Height), 0.1f, 100.0f);
 
-    m_VPMatrix = projection * view;
+    m_MVPMatrix = projection * view * modelMatrix;
 
-    m_Constants.Model = modelMatrix;
-    m_Constants.VP = m_VPMatrix;
+    m_Constants.NormalMatrix = glm::transpose(glm::inverse(modelMatrix));
+    m_Constants.MVP = m_MVPMatrix;
 
     //m_Constants.lightInfo.LightToLightInfo(m_Light);
 
