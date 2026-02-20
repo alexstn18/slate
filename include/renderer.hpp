@@ -2,6 +2,7 @@
 
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
+#include "rendering/render_components.hpp"
 
 namespace slate {
 	class Adapter;
@@ -87,7 +88,26 @@ namespace slate {
 		static inline constexpr u32 m_NumBuffers{ 3u };
 
 		glm::vec4 m_ClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
-		glm::mat4 m_MVPMatrix{};
+		glm::mat4 m_VPMatrix{};
+
+		struct LightInfo {
+			glm::vec3 Color;
+			float _pad0;
+			glm::vec3 Position;
+			float _pad1;
+			glm::vec3 Direction;
+			float Intensity;
+			float _pad2[4];
+			void LightToLightInfo(const Light& light);
+		};
+
+		struct Constants {
+			glm::mat4 Model;
+			glm::mat4 VP;
+			//LightInfo lightInfo;
+		}m_Constants;
+
+		Light m_Light;
 	};
 }
 

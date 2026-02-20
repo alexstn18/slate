@@ -15,4 +15,19 @@ namespace slate {
 		float roughnessFactor{ 1.0f };
 		glm::vec3 emissiveFactor{ 0.0f };
 	};
+
+	struct Light {
+
+		glm::vec3 Color{ 1.0f };
+		glm::vec3 Position{ 0.0f };
+		glm::vec3 Direction{ 1.0f };
+		
+		float Intensity{ 0.5f };
+		
+		enum class Type : i32 {
+			Ambient = 0,
+			Point,
+			Directional,
+		} type = Type::Point;
+	};
 }

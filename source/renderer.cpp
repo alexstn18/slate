@@ -85,6 +85,13 @@ bool Renderer::Initialize()
 
     m_Interface->Initialize();
 
+    m_Light.Color = glm::vec3(1.0f, 0.95f, 0.8f);
+    m_Light.Position = glm::vec3(3.0f, 3.0f, 5.0f);
+    m_Light.Intensity = 1.0f;
+
+    m_Constants.VP = m_VPMatrix;
+    //m_Constants.lightInfo.LightToLightInfo(m_Light);
+
 	return true;
 }
 
@@ -128,7 +135,12 @@ void Renderer::Update()
 
     glm::mat4 projection = glm::perspectiveFovLH(glm::radians(45.0f), float(m_Width), float(m_Height), 0.1f, 100.0f);
 
-    m_MVPMatrix = projection * view * modelMatrix;
+    m_VPMatrix = projection * view;
+
+    m_Constants.Model = modelMatrix;
+    m_Constants.VP = m_VPMatrix;
+
+    //m_Constants.lightInfo.LightToLightInfo(m_Light);
 
     m_Interface->NewFrame();
     m_Interface->Update(deltaSeconds);
@@ -158,7 +170,11 @@ void Renderer::Render()
 
     m_CommandList->SetPipelineState(std::shared_ptr<PipelineStateObject>(m_PipelineState.get(), [](auto*) {}));
     m_CommandList->SetGraphicsRootSignature(std::shared_ptr<RootSignature>(m_RootSignature.get(), [](auto*) {}));
-    m_CommandList->SetGraphics32BitConstants(0, sizeof(glm::mat4) / 4, &m_MVPMatrix);
+    m_CommandList->SetGraphics32BitConstants(
+        0,
+        sizeof(Constants) / 4,
+        &m_Constants
+    );
     ID3D12DescriptorHeap* heaps[] = { m_SRVDescriptorHeap->Get().Get() };
     m_CommandList->Get()->SetDescriptorHeaps(1, heaps);
     m_CommandList->SetViewport(m_Viewport);
@@ -294,7 +310,7 @@ void Renderer::CreateDepthStencil()
 
 void Renderer::CreateRootSignature()
 {
-    m_RootSignature->AddRootConstants(0u, sizeof(glm::mat4) / 4)
+    m_RootSignature->AddRootConstants(0u, sizeof(Constants) / 4)
                     .AddDescriptorTable()
                     .AddSRVs(0u, 1u)
                     .AddStaticSampler(0u);
@@ -343,4 +359,12 @@ void Renderer::CompileShaders()
 void Renderer::FlushUploads()
 {
     m_PendingUploads.clear();
+}
+
+void Renderer::LightInfo::LightToLightInfo(const Light& light)
+{
+    Color = light.Color;
+    Position = light.Position;
+    Direction = light.Direction;
+    Intensity = light.Intensity;
 }
