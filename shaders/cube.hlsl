@@ -53,16 +53,14 @@ float4 LightingCalculation(PSInput input)
     const float AMBIENT_INTENSITY = 0.05f;
     
     // @TODO: point light attenuation values, move to CBV
-    const float LIGHT_CONSTANT = 1.0f;
-    const float LIGHT_LINEAR = 0.014f;
-    const float LIGHT_QUADRATIC = 0.0007f;
+    const float LIGHT_RANGE = 10000.0f;
     
     float3 normal = normalize(input.Normal);
     float3 viewDir = normalize(CAMERA_POS - input.Position.xyz);
     
     // @TODO: move to using a CBV upload buffer instead of hardcoding stuff
     LightInfo lightInfo;
-    lightInfo.Type = TYPE_DIRECTIONAL;
+    lightInfo.Type = TYPE_POINT;
     lightInfo.Color = float3(1.0f, 0.95f, 0.8f);
     lightInfo.Intensity = 1.0f;
     
@@ -79,10 +77,9 @@ float4 LightingCalculation(PSInput input)
         lightDir = normalize(lightInfo.Position - input.Position.xyz);
         
         float dist = length(lightInfo.Position - input.Position.xyz);
-        attenuation = 1.0f / (LIGHT_CONSTANT + LIGHT_LINEAR * dist +
-                        LIGHT_QUADRATIC * (dist * dist));
+        attenuation = saturate(1.0f - dist / LIGHT_RANGE);
+        attenuation *= attenuation;
     }
-    
     
     float4 ambient = float4(lightInfo.Color * AMBIENT_INTENSITY, 1.0f);
     float diff = max(dot(normal, lightDir), 0.0f);
