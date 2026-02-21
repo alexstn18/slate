@@ -91,13 +91,14 @@ namespace slate {
 		glm::mat4 m_MVPMatrix{};
 
 		struct LightInfo {
-			glm::vec3 Color;
-			float _pad0;
 			glm::vec3 Position;
+			float _pad0;
+			glm::vec3 Color;
 			float _pad1;
 			glm::vec3 Direction;
 			float Intensity;
-			float _pad2[4];
+			u32 Type;
+			float _pad2[3];
 			void LightToLightInfo(const Light& light);
 		};
 

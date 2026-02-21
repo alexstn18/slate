@@ -363,8 +363,9 @@ void Renderer::FlushUploads()
 
 void Renderer::LightInfo::LightToLightInfo(const Light& light)
 {
-    Color = light.Color;
-    Position = light.Position;
+    Position  = light.Position;
+    Color     = light.Color;
     Direction = light.Direction;
     Intensity = light.Intensity;
+    Type      = static_cast<u32>(light.type);
 }
