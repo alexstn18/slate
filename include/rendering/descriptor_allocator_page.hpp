@@ -6,6 +6,9 @@
 
 #include "descriptor_allocation.hpp"
 
+// source:
+// https://github.com/jpvanoosten/LearningDirectX12/blob/main/DX12Lib/src/DescriptorAllocatorPage.cpp
+
 namespace slate
 {
 	// Class to provide free list allocator strategy for ID3D12DescriptorHeap

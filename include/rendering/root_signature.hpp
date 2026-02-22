@@ -2,7 +2,9 @@
 
 namespace slate
 {
-	// Helper class generated with Claude AI
+	// Helper class combined with 
+	// https://github.com/jpvanoosten/LearningDirectX12/blob/main/DX12Lib/src/RootSignature.cpp
+	// and some parts of it generated with Claude AI
 	class RootSignature
 	{
 	public:

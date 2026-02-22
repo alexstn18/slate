@@ -3,6 +3,9 @@
 #include <queue>
 #include <functional>
 
+// source:
+// https://github.com/jpvanoosten/LearningDirectX12/blob/main/DX12Lib/src/DynamicDescriptorHeap.cpp
+
 namespace slate
 {
 	// Purpose: allocating GPU visible descriptors that are used for binding

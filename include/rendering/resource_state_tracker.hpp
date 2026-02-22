@@ -4,6 +4,9 @@
 #include <mutex>
 #include <unordered_map>
 
+// source:
+// https://github.com/jpvanoosten/LearningDirectX12/blob/main/DX12Lib/src/ResourceStateTracker.cpp
+
 namespace slate
 {
 	class Resource;

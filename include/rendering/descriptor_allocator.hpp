@@ -5,6 +5,9 @@
 
 #include "rendering/descriptor_allocation.hpp"
 
+// source:
+// https://github.com/jpvanoosten/LearningDirectX12/blob/main/DX12Lib/src/DescriptorAllocator.cpp
+
 namespace slate
 {
 	class DescriptorAllocatorPage;

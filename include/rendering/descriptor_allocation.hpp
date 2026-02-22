@@ -1,4 +1,8 @@
 #pragma once
+
+// source:
+// https://github.com/jpvanoosten/LearningDirectX12/blob/main/DX12Lib/src/DescriptorAllocation.cpp
+
 namespace slate
 {
 	class DescriptorAllocatorPage;

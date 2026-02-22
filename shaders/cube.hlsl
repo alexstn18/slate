@@ -50,31 +50,33 @@ float4 LightingCalculation(PSInput input)
     // once you have a proper camera
     const float3 CAMERA_POS = float3(0.0f, 0.0f, 5.0f);
     const float SPECULAR_STRENGTH = 0.5f;
+    const float SPECULAR_GLOSSINESS = 0.25f;
     const float AMBIENT_INTENSITY = 0.05f;
     
     // @TODO: point light attenuation values, move to CBV
     const float LIGHT_RANGE = 10000.0f;
     
-    float3 normal = normalize(input.Normal);
+    float3 N = normalize(input.Normal);
     float3 viewDir = normalize(CAMERA_POS - input.Position.xyz);
+    float specularExponent = exp2(SPECULAR_GLOSSINESS * 8) + 2;
     
     // @TODO: move to using a CBV upload buffer instead of hardcoding stuff
     LightInfo lightInfo;
-    lightInfo.Type = TYPE_POINT;
+    lightInfo.Type = TYPE_DIRECTIONAL;
     lightInfo.Color = float3(1.0f, 0.95f, 0.8f);
     lightInfo.Intensity = 1.0f;
     
-    float3 lightDir = float3(0.0f, 0.0f, 0.0f);
+    float3 L = float3(0.0f, 0.0f, 0.0f);
     float attenuation = 1.0f;
     if(lightInfo.Type == TYPE_DIRECTIONAL)
     {
         lightInfo.Direction = float3(15.0f, 0.0f, -10.0f);
-        lightDir = normalize(-lightInfo.Direction);
+        L = normalize(-lightInfo.Direction);
     }
     else
     {
         lightInfo.Position = float3(3.0f, 3.0f, 5.0f);
-        lightDir = normalize(lightInfo.Position - input.Position.xyz);
+        L = normalize(lightInfo.Position - input.Position.xyz);
         
         float dist = length(lightInfo.Position - input.Position.xyz);
         attenuation = saturate(1.0f - dist / LIGHT_RANGE);
@@ -82,12 +84,14 @@ float4 LightingCalculation(PSInput input)
     }
     
     float4 ambient = float4(lightInfo.Color * AMBIENT_INTENSITY, 1.0f);
-    float diff = max(dot(normal, lightDir), 0.0f);
+    float lambertian = dot(N, L);
+    float diff = max(lambertian, 0.0f);
     float4 diffuse = float4(diff * lightInfo.Intensity * lightInfo.Color, 1.0f);
-    float3 halfwayDir = normalize(lightDir + viewDir);
-    // float3 reflectDir = reflect(-lightDir, input.Normal);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0f), 16.0f);
-    float4 specular = float4(SPECULAR_STRENGTH * spec * lightInfo.Color, 1.0f);
+    float3 halfwayDir = normalize(L + viewDir);
+    // float3 reflectDir = reflect(-lightDir, input.Normal); // this is used in phong, not blinn-phong
+    float spec = max(dot(N, halfwayDir), 0.0f) * (lambertian > 0);
+    spec = pow(spec, specularExponent) * SPECULAR_GLOSSINESS; // * gloss is an approximation for PBR-like i think?
+    float4 specular = float4(spec * lightInfo.Color, 1.0f);
     
     ambient *= attenuation;
     diffuse *= attenuation;
