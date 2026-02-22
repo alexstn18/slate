@@ -26,8 +26,7 @@ Model::Model(const std::filesystem::path& filePath)
 	
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || 
 		!scene->mRootNode) {
-		log::Error("Assimp: {}", importer.GetErrorString());
-		return; // Add this
+		log::Critical("Assimp: {}", importer.GetErrorString());
 	}
 
 	log::Info("Loaded {} meshes", scene->mNumMeshes);
