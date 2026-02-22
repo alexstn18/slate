@@ -138,9 +138,9 @@ void Renderer::Update()
     m_MVPMatrix = projection * view * modelMatrix;
 
     m_Constants.NormalMatrix = glm::transpose(glm::inverse(modelMatrix));
+    m_Constants.Model = modelMatrix;
     m_Constants.MVP = m_MVPMatrix;
-
-    //m_Constants.lightInfo.LightToLightInfo(m_Light);
+    // m_Constants.lightInfo.LightToLightInfo(m_Light);
 
     m_Interface->NewFrame();
     m_Interface->Update(deltaSeconds);

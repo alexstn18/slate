@@ -104,6 +104,7 @@ namespace slate {
 
 		struct Constants {
 			glm::mat4 NormalMatrix;
+			glm::mat4 Model;
 			glm::mat4 MVP;
 		}m_Constants;
 
