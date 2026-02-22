@@ -324,9 +324,9 @@ void Renderer::CompileShaders()
     ComPtr<ID3DBlob> vertexShader;
     ComPtr<ID3DBlob> pixelShader;
 
-    log::ThrowIfFailed(D3DCompileFromFile(L"shaders/cube.hlsl", nullptr, nullptr,
+    log::ThrowIfFailed(D3DCompileFromFile(L"shaders/phong.hlsl", nullptr, nullptr,
         "VSMain", "vs_5_0", 0, 0, &vertexShader, nullptr));
-    log::ThrowIfFailed(D3DCompileFromFile(L"shaders/cube.hlsl", nullptr, nullptr,
+    log::ThrowIfFailed(D3DCompileFromFile(L"shaders/phong.hlsl", nullptr, nullptr,
         "PSMain", "ps_5_0", 0, 0, &pixelShader, nullptr));
 
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
