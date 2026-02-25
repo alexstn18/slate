@@ -22,7 +22,7 @@ namespace slate {
 	class Renderer {
 	public:
 		Renderer(u32 width, u32 height);
-		virtual ~Renderer() = default;
+		virtual ~Renderer();
 
 		bool Initialize();
 		void Shutdown();

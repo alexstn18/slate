@@ -1,6 +1,10 @@
 #include "pch.hpp"
 #include "window.hpp"
 
+#include <imgui/backends/imgui_impl_win32.h>
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 using namespace slate;
 
 Window::Window(int width, int height, const std::string& title)
@@ -64,6 +68,9 @@ void Window::ProcessMessages()
 LRESULT Window::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	Window* self;
+
+	if (LRESULT res = ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam) ) return res;
+
 	if (uMsg == WM_NCCREATE)
 	{
 		CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);

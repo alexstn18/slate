@@ -46,6 +46,12 @@ Renderer::Renderer(u32 width, u32 height)
     m_Interface = std::make_unique<Interface>();
 }
 
+Renderer::~Renderer()
+{
+    // Flush the command queue.
+    m_CommandQueue->Flush();
+}
+
 bool Renderer::Initialize()
 {
 	HWND hWnd = App.Window().GetHandle();

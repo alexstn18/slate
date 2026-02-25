@@ -55,7 +55,7 @@ void Interface::NewFrame()
 	ImGui::NewFrame();
 }
 
-void Interface::Update(float deltaTime)
+void Interface::Update(float)
 {
 	ImGui::ShowDemoWindow();
 }
