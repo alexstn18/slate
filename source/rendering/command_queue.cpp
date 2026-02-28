@@ -22,32 +22,38 @@ void CommandQueue::Initialize(D3D12_COMMAND_LIST_TYPE type)
 
 	auto device = App.Renderer().D3D12Device();
 
-	log::ThrowIfFailed(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_CommandQueue)));
+	log::ThrowIfFailed(
+		device->CreateCommandQueue( &desc, IID_PPV_ARGS( &m_CommandQueue ) )
+	);
 	m_Fence = new Fence();
-	m_Fence->Initialize(0u);
-	log::Info("Command queue created successfully");
+	m_Fence->Initialize( 0u );
+	log::Info( "Command queue created successfully" );
 }
 
-u64 CommandQueue::ExecuteCommandLists(const std::vector<ID3D12GraphicsCommandList*>& cmdList)
+u64 CommandQueue::ExecuteCommandLists(
+	const std::vector<ID3D12GraphicsCommandList*>& cmdList)
 {
 	/*for (auto cmd : cmdList)
 	{
 		cmd->Close();
 	}*/
 
-	ID3D12CommandList* const* cmdListsRaw = reinterpret_cast<ID3D12CommandList* const*>(cmdList.data());
+	ID3D12CommandList* const* cmdListsRaw = 
+		reinterpret_cast<ID3D12CommandList* const*>( cmdList.data() );
 
-	m_CommandQueue->ExecuteCommandLists(static_cast<uint32_t>(cmdList.size()), cmdListsRaw);
+	m_CommandQueue->ExecuteCommandLists(
+		static_cast<uint32_t>( cmdList.size()), cmdListsRaw
+	);
 
-	return m_Fence->Signal(m_CommandQueue);
+	return m_Fence->Signal( m_CommandQueue );
 }
 
 void CommandQueue::WaitForFenceValue(u64 value)
 {
-	m_Fence->WaitForValue(value);
+	m_Fence->WaitForValue( value );
 }
 
 void CommandQueue::Flush()
 {
-	m_Fence->Flush(m_CommandQueue);
+	m_Fence->Flush( m_CommandQueue );
 }

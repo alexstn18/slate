@@ -17,14 +17,14 @@ bool Interface::Initialize()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGuiIO& io = ImGui::GetIO(); ( void )io;
 	// @TODO: enable mouse and keyboard controls here
 
 	ImGui::StyleColorsDark();
 
 	// @TODO: scaling
 
-	ImGui_ImplWin32_Init(App.Window().GetHandle());
+	ImGui_ImplWin32_Init( App.Window().GetHandle() );
 
 	auto& srvDescriptorHeap = App.Renderer().GetSRVDescriptorHeap();
 
@@ -35,10 +35,10 @@ bool Interface::Initialize()
 	info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	info.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	info.SrvDescriptorHeap = srvDescriptorHeap.Get().Get();
-	info.LegacySingleSrvCpuDescriptor = srvDescriptorHeap.GetCPUHandle(0);
-	info.LegacySingleSrvGpuDescriptor = srvDescriptorHeap.GetGPUHandle(0);
+	info.LegacySingleSrvCpuDescriptor = srvDescriptorHeap.GetCPUHandle( 0u );
+	info.LegacySingleSrvGpuDescriptor = srvDescriptorHeap.GetGPUHandle( 0u );
 
-	return ImGui_ImplDX12_Init(&info);
+	return ImGui_ImplDX12_Init( &info );
 }
 
 void Interface::Shutdown()
@@ -66,7 +66,7 @@ void Interface::Render()
 	ImGui::Render();
 
 	ID3D12DescriptorHeap* heaps[] = { App.Renderer().GetSRVDescriptorHeap().Get().Get() };
-	commandList->SetDescriptorHeaps(1, heaps);
+	commandList->SetDescriptorHeaps( 1u, heaps );
 
-	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
+	ImGui_ImplDX12_RenderDrawData( ImGui::GetDrawData(), commandList.Get() );
 }

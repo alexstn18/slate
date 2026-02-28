@@ -31,9 +31,9 @@ namespace slate
 		std::vector<ComPtr<ID3D12Resource>> m_BackBuffers;
 
 		DXGI_FORMAT m_Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		u32 m_Width{ 0 };
-		u32 m_Height{ 0 };
-		u32 m_BufferCount{ 2 };
+		u32 m_Width{ 0u };
+		u32 m_Height{ 0u };
+		u32 m_BufferCount{ 2u };
 
 		bool m_TearingSupported{ false };
 	};

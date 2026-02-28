@@ -11,6 +11,9 @@
 
 using namespace slate;
 
+// C/C++ does not have a finally block for exception handling
+// so one needs to implement it themselves
+// https://docs.oracle.com/javase/tutorial/essential/exceptions/finally.html
 struct finally
 {
     ~finally()
@@ -24,15 +27,17 @@ struct finally
 Texture::Texture(const std::filesystem::path& path, const std::wstring& name)
 {
     i32 width{}, height{}, components{};
-    u8* textureBuffer = stbi_load(path.string().c_str(), &width, &height, &components, 4);
+    u8* textureBuffer = stbi_load(
+        path.string().c_str(), &width, &height, &components, 4
+    );
 
-    if (!textureBuffer) {
-        log::Critical("Could not load texture from path: {}", path.string());
+    if ( !textureBuffer ) {
+        log::Critical( "Could not load texture from path: {}", path.string() );
     }
 
     finally f{ textureBuffer };
 
-    Initialize(name, width, height, textureBuffer);
+    Initialize( name, width, height, textureBuffer );
 
 }
 
@@ -43,34 +48,38 @@ Texture::Texture(const aiTexture* embedded, const std::wstring& name)
 
     finally f;
 
-    if (embedded->mHeight == 0) {
+    if ( embedded->mHeight == 0u ) {
         textureBuffer = stbi_load_from_memory(
-            reinterpret_cast<const stbi_uc*>(embedded->pcData),
+            reinterpret_cast<const stbi_uc*>( embedded->pcData ),
             embedded->mWidth,
             &width, &height, &components, 4
         );
+
         f.ptr = textureBuffer;
     }
     else {
         width = embedded->mWidth;
         height = embedded->mHeight;
-        textureBuffer = reinterpret_cast<u8*>(embedded->pcData);
+        textureBuffer = reinterpret_cast<u8*>( embedded->pcData );
     }
 
-    Initialize(name, width, height, textureBuffer);
+    Initialize( name, width, height, textureBuffer );
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetShaderResourceView(const D3D12_SHADER_RESOURCE_VIEW_DESC*) const
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetShaderResourceView(
+    const D3D12_SHADER_RESOURCE_VIEW_DESC*) const
 {
     return m_SRVHandle;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetUnorderedAccessView(const D3D12_UNORDERED_ACCESS_VIEW_DESC*) const
+D3D12_CPU_DESCRIPTOR_HANDLE Texture::GetUnorderedAccessView(
+    const D3D12_UNORDERED_ACCESS_VIEW_DESC*) const
 {
-    throw std::exception("Texture does not support UAV");
+    throw std::exception( "Texture does not support UAV" );
 }
 
-void Texture::Initialize(const std::wstring& name, int width, int height, void* textureBuffer )
+void Texture::Initialize(
+    const std::wstring& name, int width, int height, void* textureBuffer )
 {
     auto device = App.Renderer().D3D12Device();
     auto commandList = App.Renderer().D3D12CommandList();
@@ -84,16 +93,18 @@ void Texture::Initialize(const std::wstring& name, int width, int height, void* 
     m_ResourceDesc.SampleDesc.Count = 1;
     m_ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 
-    CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
+    CD3DX12_HEAP_PROPERTIES heapProps( D3D12_HEAP_TYPE_DEFAULT );
 
-    log::ThrowIfFailed(device->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &m_ResourceDesc,
-        D3D12_RESOURCE_STATE_COPY_DEST,
-        nullptr,
-        IID_PPV_ARGS(m_D3D12Resource.ReleaseAndGetAddressOf())
-    ));
+    log::ThrowIfFailed(
+        device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &m_ResourceDesc,
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            nullptr,
+            IID_PPV_ARGS( m_D3D12Resource.ReleaseAndGetAddressOf() )
+        )
+    );
 
     UINT64 uploadSize{ 0ull };
     device->GetCopyableFootprints(
@@ -104,16 +115,18 @@ void Texture::Initialize(const std::wstring& name, int width, int height, void* 
     );
 
     ComPtr<ID3D12Resource> uploadResource{ nullptr };
-    CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
-    auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadSize);
-    log::ThrowIfFailed(device->CreateCommittedResource(
-        &uploadHeap,
-        D3D12_HEAP_FLAG_NONE,
-        &uploadDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(uploadResource.ReleaseAndGetAddressOf())
-    ));
+    CD3DX12_HEAP_PROPERTIES uploadHeap( D3D12_HEAP_TYPE_UPLOAD );
+    auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer( uploadSize );
+    log::ThrowIfFailed(
+        device->CreateCommittedResource(
+            &uploadHeap,
+            D3D12_HEAP_FLAG_NONE,
+            &uploadDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS( uploadResource.ReleaseAndGetAddressOf() )
+        )
+    );
 
     D3D12_SUBRESOURCE_DATA textureData = {};
     textureData.pData = textureBuffer;
@@ -134,10 +147,11 @@ void Texture::Initialize(const std::wstring& name, int width, int height, void* 
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
     );
 
-    commandList->ResourceBarrier(1, &barrier);
+    commandList->ResourceBarrier( 1, &barrier );
 
     ResourceStateTracker::AddGlobalResourceState(
-        m_D3D12Resource.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        m_D3D12Resource.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+    );
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -157,7 +171,7 @@ void Texture::Initialize(const std::wstring& name, int width, int height, void* 
         m_SRVHandle
     );
 
-    SetName(name);
+    SetName( name );
 
-    App.Renderer().TrackUpload(std::move(uploadResource));
+    App.Renderer().TrackUpload( std::move( uploadResource ) );
 }

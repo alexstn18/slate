@@ -9,21 +9,21 @@ namespace slate::math
     // Convert radians to degrees.
     constexpr float Degrees(const float radians)
     {
-        return radians * (180.0f / PI);
+        return radians * ( 180.0f / PI );
     }
 
     // Convert degrees to radians.
     constexpr float Radians(const float degrees)
     {
-        return degrees * (PI / 180.0f);
+        return degrees * ( PI / 180.0f );
     }
 
     template<typename T>
     inline T Deadzone(T val, T deadzone)
     {
-        if (std::abs(val) < deadzone)
+        if ( std::abs( val ) < deadzone )
         {
-            return T(0);
+            return T( 0 );
         }
 
         return val;
@@ -33,14 +33,14 @@ namespace slate::math
     template<typename T, typename U>
     inline T NormalizeRange(U x, U min, U max)
     {
-        return T(x - min) / T(max - min);
+        return T( x - min ) / T( max - min );
     }
 
     // Shift and bias a value into another range.
     template<typename T, typename U>
     inline T ShiftBias(U x, U shift, U bias)
     {
-        return T(x * bias) + T(shift);
+        return T( x * bias ) + T( shift );
     }
 
     /***************************************************************************
@@ -52,37 +52,37 @@ namespace slate::math
     template <typename T>
     inline T AlignUpWithMask(T value, size_t mask)
     {
-        return (T)(((size_t)value + mask) & ~mask);
+        return ( T )( ( ( size_t )value + mask ) & ~mask );
     }
 
     template <typename T>
     inline T AlignDownWithMask(T value, size_t mask)
     {
-        return (T)((size_t)value & ~mask);
+        return ( T )( ( size_t )value & ~mask );
     }
 
     template <typename T>
     inline T AlignUp(T value, size_t alignment)
     {
-        return AlignUpWithMask(value, alignment - 1);
+        return AlignUpWithMask( value, alignment - 1 );
     }
 
     template <typename T>
     inline T AlignDown(T value, size_t alignment)
     {
-        return AlignDownWithMask(value, alignment - 1);
+        return AlignDownWithMask( value, alignment - 1 );
     }
 
     template <typename T>
     inline bool IsAligned(T value, size_t alignment)
     {
-        return 0 == ((size_t)value & (alignment - 1));
+        return 0 == ( ( size_t )value & ( alignment - 1 ) );
     }
 
     template <typename T>
     inline T DivideByMultiple(T value, size_t alignment)
     {
-        return (T)((value + alignment - 1) / alignment);
+        return ( T )( ( value + alignment - 1 ) / alignment );
     }
     /***************************************************************************/
 

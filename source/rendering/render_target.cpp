@@ -11,7 +11,7 @@ void RenderTarget::SetRenderTargetViews(const std::vector<D3D12_CPU_DESCRIPTOR_H
 void RenderTarget::SetRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE rtv)
 {
 	m_RTVs.clear();
-	m_RTVs.push_back(rtv);
+	m_RTVs.push_back( rtv );
 }
 
 void RenderTarget::SetDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE dsv)

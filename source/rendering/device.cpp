@@ -24,20 +24,23 @@ Device::~Device()
 
 void Device::CreateDevice(ComPtr<IDXGIAdapter4> adapter)
 {
-	log::ThrowIfFailed(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_Device)));
+	log::ThrowIfFailed(
+		D3D12CreateDevice(
+			adapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS( &m_Device )
+		)
+	);
 
 	// enable debug messages in debug mode
 #if defined(_DEBUG)
 	ComPtr<ID3D12InfoQueue> pInfoQueue;
-	if (SUCCEEDED(m_Device.As(&pInfoQueue)))
-	{
-		log::Info("Debug layer enabled - configuring message filters...");
+	if ( SUCCEEDED( m_Device.As( &pInfoQueue ) ) ) {
+		log::Info( "Debug layer enabled - configuring message filters..." );
 
 		// SetBreakOnSeverity sets a message severity level to break on with a debugger
 		// when a messages with that severity passes through the storage filter
-		pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE); // memory corruption
-		pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
-		pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+		pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE ); // memory corruption
+		pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_ERROR, TRUE );
+		pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_WARNING, TRUE );
 
 		D3D12_MESSAGE_SEVERITY Severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
 		D3D12_MESSAGE_ID DenyIds[] = {
@@ -49,13 +52,13 @@ void Device::CreateDevice(ComPtr<IDXGIAdapter4> adapter)
 			D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
 			D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE, };
 		D3D12_INFO_QUEUE_FILTER NewFilter = {};
-		NewFilter.DenyList.NumSeverities = _countof(Severities);
+		NewFilter.DenyList.NumSeverities = _countof( Severities );
 		NewFilter.DenyList.pSeverityList = Severities;
-		NewFilter.DenyList.NumIDs = _countof(DenyIds);
+		NewFilter.DenyList.NumIDs = _countof( DenyIds );
 		NewFilter.DenyList.pIDList = DenyIds;
-		log::ThrowIfFailed(pInfoQueue->PushStorageFilter(&NewFilter));
-		log::Info("Debug message filters configured");
+		log::ThrowIfFailed( pInfoQueue->PushStorageFilter( &NewFilter ) );
+		log::Info( "Debug message filters configured" );
 	}
 #endif
-	log::Info("D3D12 Device created successfully!");
+	log::Info( "D3D12 Device created successfully!" );
 }

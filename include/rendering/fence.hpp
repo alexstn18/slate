@@ -27,7 +27,7 @@ namespace slate
 
 		ComPtr<ID3D12Fence> m_Fence{ nullptr };
 		HANDLE m_FenceEvent{};
-		uint64_t m_FenceValue{ 0 };
+		uint64_t m_FenceValue{ 0ull };
 	};
 }
 
