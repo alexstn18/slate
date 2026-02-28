@@ -3,6 +3,8 @@ struct VSInput
     float3 Position : POSITION;
     float3 Normal : NORMAL;
     float2 TexCoord : TEXCOORD;
+    float3 Tangent : TANGENT;
+    float3 BiTangent : BITANGENT;
 };
 
 struct PSInput
@@ -11,6 +13,8 @@ struct PSInput
     float3 Normal : NORMAL;
     float3 WorldPos : WORLDPOS;
     float2 TexCoord : TEXCOORD;
+    float3 Tangent : TANGENT;
+    float3 BiTangent : BITANGENT;
 };
 
 struct LightInfo
@@ -20,13 +24,13 @@ struct LightInfo
     float3 Direction;
     float  Intensity;
     uint   Type;
-    // float  Type;
 };
 
 #define TYPE_DIRECTIONAL 0
 #define TYPE_POINT 1
 
 Texture2D albedoTexture : register(t0);
+Texture2D normalTexture : register(t1);
 SamplerState linearSampler : register(s0);
 
 cbuffer Constants : register(b0)
@@ -43,6 +47,8 @@ PSInput VSMain(VSInput input)
     output.Normal = mul((float3x3) NormalMatrix, input.Normal);
     output.WorldPos = mul(Model, float4(input.Position, 1.0f)).xyz;
     output.TexCoord = input.TexCoord;
+    output.Tangent = mul((float3x3) Model, input.Tangent);
+    output.BiTangent = mul((float3x3) Model, input.BiTangent);
     return output;
 }
 
@@ -58,14 +64,30 @@ float4 LightingCalculation(PSInput input)
     // @TODO: point light attenuation values, move to CBV
     const float LIGHT_RANGE = 10000.0f;
     
-    
     // @TODO: move to using a CBV upload buffer instead of hardcoding stuff
     LightInfo lightInfo;
     lightInfo.Type = TYPE_DIRECTIONAL;
     lightInfo.Color = float3(1.0f, 0.95f, 0.8f);
     lightInfo.Intensity = 1.0f;
     
-    float3 N = normalize(input.Normal);
+    float3 T = normalize(input.Tangent);
+    float3 B = normalize(input.BiTangent);
+    float3 Nv = normalize(input.Normal);
+    
+    T = normalize(T - dot(T, Nv) * Nv); // gram-schmidt
+    
+    float3x3 MTX = { 
+        T.x, B.x, Nv.x,
+        T.y, B.y, Nv.y,
+        T.z, B.z, Nv.z
+    };
+    
+    float4 normalTex = normalTexture.Sample(linearSampler, input.TexCoord);
+    float3 tangentSpaceNormal = normalTex.rgb * 2.0f - 1.0f;
+    float3 N = normalize(mul(MTX, tangentSpaceNormal)); // normal-mapping
+    
+    // float3 N = normalize(input.Normal);
+    
     float3 viewDir = normalize(CAMERA_POS - input.WorldPos);
     float3 L = float3(0.0f, 0.0f, 0.0f);
     float specularExponent = exp2(SPECULAR_GLOSSINESS * 8) + 2;

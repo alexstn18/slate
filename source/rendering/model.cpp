@@ -80,7 +80,7 @@ namespace
 					mesh->mTextureCoords[ 0 ][ i ].y
 				};
 
-				if (mesh->mTangents) {
+				if ( mesh->mTangents ) {
 					// tangent
 					vertex.tangent = {
 						mesh->mTangents[ i ].x,
@@ -133,7 +133,7 @@ namespace
 			);
 
 			aiColor4D color{};
-			if (_material ->Get(AI_MATKEY_BASE_COLOR, color) == AI_SUCCESS ) {
+			if ( _material->Get( AI_MATKEY_BASE_COLOR, color ) == AI_SUCCESS ) {
 				material.albedoFactor = { color.r, color.g, color.b, color.a };
 			}
 

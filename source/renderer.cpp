@@ -344,7 +344,7 @@ void Renderer::CreateRootSignature()
 {
     m_RootSignature->AddRootConstants( 0u, sizeof( Constants ) / 4 )
                     .AddDescriptorTable()
-                    .AddSRVs( 0u, 1u )
+                    .AddSRVs( 0u, 2u )
                     .AddStaticSampler( 0u );
     m_RootSignature->Initialize();
 }

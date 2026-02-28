@@ -10,12 +10,6 @@
 #include <glm/mat4x4.hpp>
 #include <chrono>
 
-struct Vertex
-{
-	glm::vec3 Position;
-	glm::vec4 Color;
-};
-
 namespace slate
 {
 	class Device
