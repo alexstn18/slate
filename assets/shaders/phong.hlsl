@@ -31,6 +31,8 @@ struct LightInfo
 
 Texture2D albedoTexture : register(t0);
 Texture2D normalTexture : register(t1);
+Texture2D occlusionTexture : register(t2);
+Texture2D emissionTexture : register(t3);
 SamplerState linearSampler : register(s0);
 
 cbuffer Constants : register(b0)
@@ -47,8 +49,8 @@ PSInput VSMain(VSInput input)
     output.Normal = mul((float3x3) NormalMatrix, input.Normal);
     output.WorldPos = mul(Model, float4(input.Position, 1.0f)).xyz;
     output.TexCoord = input.TexCoord;
-    output.Tangent = mul((float3x3) Model, input.Tangent);
-    output.BiTangent = mul((float3x3) Model, input.BiTangent);
+    output.Tangent = mul((float3x3) NormalMatrix, input.Tangent);
+    output.BiTangent = mul((float3x3) NormalMatrix, input.BiTangent);
     return output;
 }
 
@@ -76,7 +78,9 @@ float4 LightingCalculation(PSInput input)
     
     T = normalize(T - dot(T, Nv) * Nv); // gram-schmidt
     
-    float3x3 MTX = { 
+    B = cross(Nv, T);
+    
+    float3x3 TBN = { 
         T.x, B.x, Nv.x,
         T.y, B.y, Nv.y,
         T.z, B.z, Nv.z
@@ -84,7 +88,7 @@ float4 LightingCalculation(PSInput input)
     
     float4 normalTex = normalTexture.Sample(linearSampler, input.TexCoord);
     float3 tangentSpaceNormal = normalTex.rgb * 2.0f - 1.0f;
-    float3 N = normalize(mul(MTX, tangentSpaceNormal)); // normal-mapping
+    float3 N = normalize(mul(TBN, tangentSpaceNormal)); // normal-mapping
     
     // float3 N = normalize(input.Normal);
     
@@ -121,7 +125,9 @@ float4 LightingCalculation(PSInput input)
     diffuse *= attenuation;
     specular *= attenuation;
     
-    float4 final = ambient + diffuse + specular;
+    float4 emission = emissionTexture.Sample(linearSampler, input.TexCoord);
+    
+    float4 final = ambient + diffuse + specular + emission;
     return final;
 }
 
