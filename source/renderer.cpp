@@ -86,7 +86,7 @@ bool Renderer::Initialize()
     log::Info( "Scissor: {}x{}", m_ScissorRect.right, m_ScissorRect.bottom );
 
     m_Model = Model::Load(
-        "DamagedHelmet.glb", *m_CommandList, *m_CommandQueue, m_CommandAllocators[ 0 ]
+        "assets/models/DamagedHelmet.glb", *m_CommandList, *m_CommandQueue, m_CommandAllocators[ 0 ]
     );
 	CreateRootSignature();
 	CompileShaders();
@@ -356,9 +356,9 @@ void Renderer::CompileShaders()
     ComPtr<ID3DBlob> vertexShader;
     ComPtr<ID3DBlob> pixelShader;
 
-    log::ThrowIfFailed( D3DCompileFromFile( L"shaders/phong.hlsl", nullptr, nullptr,
+    log::ThrowIfFailed( D3DCompileFromFile( L"assets/shaders/phong.hlsl", nullptr, nullptr,
         "VSMain", "vs_5_0", 0, 0, &vertexShader, nullptr ) );
-    log::ThrowIfFailed( D3DCompileFromFile( L"shaders/phong.hlsl", nullptr, nullptr,
+    log::ThrowIfFailed( D3DCompileFromFile( L"assets/shaders/phong.hlsl", nullptr, nullptr,
         "PSMain", "ps_5_0", 0, 0, &pixelShader, nullptr ) );
 
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {

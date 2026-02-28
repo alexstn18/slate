@@ -228,7 +228,4 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="shaders\triangle.hlsl" />
-  </ItemGroup>
 </Project>
