@@ -57,12 +57,12 @@ bool Renderer::Initialize()
 	HWND hWnd = App.Window().GetHandle();
 
 	EnableDebugLayer();
-    m_Adapter->Initialize(false);  // Adapter created here
-    m_Device->CreateDevice(m_Adapter->GetAdapter());  // Device created here
+    m_Adapter->Initialize( false );  // Adapter created here
+    m_Device->CreateDevice( m_Adapter->GetAdapter() );  // Device created here
 	auto device = m_Device->GetDevice();
 
 	m_CommandQueue->Initialize();
-	m_SwapChain->Initialize(hWnd, m_Width, m_Height, m_NumBuffers);
+	m_SwapChain->Initialize( hWnd, m_Width, m_Height, m_NumBuffers );
 	m_DSVDescriptorHeap->Initialize(
         HeapType::DSV, 
         device->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_DSV )
@@ -208,7 +208,7 @@ void Renderer::Render()
 
         // bind this mesh's textures
         const auto& material = mesh->GetMaterial();
-        if (material->Albedo) {
+        if ( material->Albedo ) {
             m_CommandList->Get()->SetGraphicsRootDescriptorTable(
                 1u, material->Albedo->GetGPUHandle()
             );
@@ -323,7 +323,7 @@ void Renderer::CreateDepthStencil()
             &depthDesc,
             D3D12_RESOURCE_STATE_DEPTH_WRITE,
             &depthOptimizedClearValue,
-            IID_PPV_ARGS(&m_DepthStencilBuffer)
+            IID_PPV_ARGS( &m_DepthStencilBuffer )
         )
     );
 
@@ -332,7 +332,7 @@ void Renderer::CreateDepthStencil()
     dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
     dsv.Flags = D3D12_DSV_FLAG_NONE;
 
-    auto dsvHandle = m_DSVDescriptorHeap->GetCPUHandle(0u);
+    auto dsvHandle = m_DSVDescriptorHeap->GetCPUHandle( 0u );
     device->CreateDepthStencilView( m_DepthStencilBuffer.Get(), &dsv, dsvHandle );
 
     ResourceStateTracker::AddGlobalResourceState(
@@ -342,7 +342,7 @@ void Renderer::CreateDepthStencil()
 
 void Renderer::CreateRootSignature()
 {
-    m_RootSignature->AddRootConstants( 0u, sizeof(Constants) / 4 )
+    m_RootSignature->AddRootConstants( 0u, sizeof( Constants ) / 4 )
                     .AddDescriptorTable()
                     .AddSRVs( 0u, 1u )
                     .AddStaticSampler( 0u );
@@ -356,9 +356,9 @@ void Renderer::CompileShaders()
     ComPtr<ID3DBlob> vertexShader;
     ComPtr<ID3DBlob> pixelShader;
 
-    log::ThrowIfFailed(D3DCompileFromFile( L"shaders/phong.hlsl", nullptr, nullptr,
+    log::ThrowIfFailed( D3DCompileFromFile( L"shaders/phong.hlsl", nullptr, nullptr,
         "VSMain", "vs_5_0", 0, 0, &vertexShader, nullptr ) );
-    log::ThrowIfFailed(D3DCompileFromFile( L"shaders/phong.hlsl", nullptr, nullptr,
+    log::ThrowIfFailed( D3DCompileFromFile( L"shaders/phong.hlsl", nullptr, nullptr,
         "PSMain", "ps_5_0", 0, 0, &pixelShader, nullptr ) );
 
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
@@ -382,7 +382,7 @@ void Renderer::CompileShaders()
     psoDesc.SampleMask = UINT_MAX;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.NumRenderTargets = 1u;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.RTVFormats[ 0 ] = DXGI_FORMAT_R8G8B8A8_UNORM;
     psoDesc.SampleDesc.Count = 1u;
 
     m_PipelineState->InitializeAsGraphicsPSO( psoDesc );
