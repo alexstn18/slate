@@ -54,6 +54,23 @@ PSInput VSMain(VSInput input)
     return output;
 }
 
+float3 SRGBToLinear(float3 sRGB)
+{
+    return pow(sRGB, 2.2f);
+}
+
+float3 ACESFilmic(float3 x)
+{
+    // Narkowicz 2015 approximation
+    float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
+    return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
+}
+
+float3 LinearToSRGB(float3 linearColor)
+{
+    return pow(linearColor, 1.0f / 2.2f);
+}
+
 float4 LightingCalculation(PSInput input)
 {
     // @TODO: change this to be included in the constant buffer
@@ -68,7 +85,7 @@ float4 LightingCalculation(PSInput input)
     
     // @TODO: move to using a CBV upload buffer instead of hardcoding stuff
     LightInfo lightInfo;
-    lightInfo.Type = TYPE_DIRECTIONAL;
+    lightInfo.Type = TYPE_POINT;
     lightInfo.Color = float3(1.0f, 0.95f, 0.8f);
     lightInfo.Intensity = 1.0f;
     
@@ -87,6 +104,7 @@ float4 LightingCalculation(PSInput input)
     };
     
     float4 normalTex = normalTexture.Sample(linearSampler, input.TexCoord);
+     // unpack normals from [0, 1] back to [-1, 1]
     float3 tangentSpaceNormal = normalTex.rgb * 2.0f - 1.0f;
     float3 N = normalize(mul(TBN, tangentSpaceNormal)); // normal-mapping
     
@@ -127,6 +145,8 @@ float4 LightingCalculation(PSInput input)
     
     float4 emission = emissionTexture.Sample(linearSampler, input.TexCoord);
     
+    emission.rgb = SRGBToLinear(emission.rgb);
+    
     float4 final = ambient + diffuse + specular + emission;
     return final;
 }
@@ -134,5 +154,13 @@ float4 LightingCalculation(PSInput input)
 float4 PSMain(PSInput input) : SV_TARGET
 {
     float4 tex = albedoTexture.Sample(linearSampler, input.TexCoord);
-    return LightingCalculation(input) * tex;
+    
+    tex.rgb = SRGBToLinear(tex.rgb);
+    
+    float4 color = LightingCalculation(input) * tex;
+    
+    color.rgb = ACESFilmic(color.rgb); // tonemap
+    color.rgb = LinearToSRGB(color.rgb); // "encode" for display
+    
+    return color;
 }
