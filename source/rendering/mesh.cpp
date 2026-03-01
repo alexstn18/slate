@@ -16,6 +16,14 @@ Mesh::Mesh(const std::vector<Vertex>& vertices,
 {
 }
 
+// constructor for when there's no material linked to the mesh
+Mesh::Mesh(const std::vector<Vertex>& vertices, 
+           const std::vector<u32>& indices)
+    : m_Vertices( vertices.data(), vertices.data() + vertices.size() )
+    , m_Indices( indices.data(), indices.data() + indices.size() )
+{
+}
+
 void Mesh::CreateBuffers(CommandList& commandList)
 {
     const auto vertexCount = GetVertexCount();

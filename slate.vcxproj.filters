@@ -48,15 +48,6 @@
     <ClCompile Include="source\rendering\upload_buffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\rendering\descriptor_allocator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="source\rendering\descriptor_allocator_page.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="source\rendering\descriptor_allocation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\rendering\dynamic_descriptor_heap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -129,6 +120,9 @@
     <ClCompile Include="external\imgui\backends\imgui_impl_win32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="external\d3d12ma\D3D12MemAlloc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\application.hpp">
@@ -162,15 +156,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\rendering\upload_buffer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\rendering\descriptor_allocator.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\rendering\descriptor_allocator_page.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\rendering\descriptor_allocation.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\rendering\dynamic_descriptor_heap.hpp">

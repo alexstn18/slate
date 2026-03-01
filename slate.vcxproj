@@ -159,6 +159,10 @@ xcopy /y /d /c /e /i "assets" "$(OutDir)assets"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="external\d3d12ma\D3D12MemAlloc.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="external\imgui\backends\imgui_impl_dx12.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -201,9 +205,6 @@ xcopy /y /d /c /e /i "assets" "$(OutDir)assets"</Command>
     <ClCompile Include="source\rendering\resource_state_tracker.cpp" />
     <ClCompile Include="source\rendering\resource.cpp" />
     <ClCompile Include="source\rendering\dynamic_descriptor_heap.cpp" />
-    <ClCompile Include="source\rendering\descriptor_allocation.cpp" />
-    <ClCompile Include="source\rendering\descriptor_allocator_page.cpp" />
-    <ClCompile Include="source\rendering\descriptor_allocator.cpp" />
     <ClCompile Include="source\rendering\command_list.cpp" />
     <ClCompile Include="source\rendering\fence.cpp" />
     <ClCompile Include="source\pch.cpp">
@@ -227,9 +228,6 @@ xcopy /y /d /c /e /i "assets" "$(OutDir)assets"</Command>
     <ClInclude Include="include\rendering\adapter.hpp" />
     <ClInclude Include="include\rendering\buffer.hpp" />
     <ClInclude Include="include\rendering\dynamic_descriptor_heap.hpp" />
-    <ClInclude Include="include\rendering\descriptor_allocation.hpp" />
-    <ClInclude Include="include\rendering\descriptor_allocator_page.hpp" />
-    <ClInclude Include="include\rendering\descriptor_allocator.hpp" />
     <ClInclude Include="include\rendering\command_list.hpp" />
     <ClInclude Include="include\rendering\fence.hpp" />
     <ClInclude Include="include\rendering\command_queue.hpp" />

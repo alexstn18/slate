@@ -85,7 +85,7 @@ float4 LightingCalculation(PSInput input)
     
     // @TODO: move to using a CBV upload buffer instead of hardcoding stuff
     LightInfo lightInfo;
-    lightInfo.Type = TYPE_POINT;
+    lightInfo.Type = TYPE_DIRECTIONAL;
     lightInfo.Color = float3(1.0f, 0.95f, 0.8f);
     lightInfo.Intensity = 1.0f;
     

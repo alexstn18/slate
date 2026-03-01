@@ -18,6 +18,10 @@ namespace slate {
 		Mesh(const std::vector<Vertex>& vertices,
 			 const std::vector<u32>& indices,
 			 const Material& material);
+
+		Mesh(const std::vector<Vertex>& vertices,
+			 const std::vector<u32>& indices);
+
 		void CreateBuffers(CommandList& commandList);
 
 		[[nodiscard]] std::shared_ptr<VertexBuffer> GetVertexBuffer() const noexcept { return m_VertexBuffer; }
