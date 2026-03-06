@@ -192,6 +192,12 @@ void CommandList::TrackObject(ComPtr<ID3D12Object> object)
 void CommandList::ReleaseTrackedObjects()
 {
 	m_TrackedObjects.clear();
+	for ( auto* alloc : m_TrackedAllocations ) {
+		if ( alloc ) {
+			alloc->Release();
+		}
+	}
+	m_TrackedAllocations.clear();
 }
 
 void CommandList::TrackResource(ComPtr<ID3D12Object> object)
@@ -487,17 +493,22 @@ void CommandList::UploadBufferData(Buffer& buffer, const void* data, size_t size
 
 	// Create temporary upload buffer
 	auto device = App.Renderer().D3D12Device();
-	CD3DX12_HEAP_PROPERTIES uploadProps( D3D12_HEAP_TYPE_UPLOAD );
+	auto& allocator = App.Renderer().D3D12MA_Allocator();
 	CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer( sizeInBytes );
 
+	D3D12MA::ALLOCATION_DESC allocDesc = {};
+	allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+
+	D3D12MA::Allocation* uploadAllocation{ nullptr };
 	ComPtr<ID3D12Resource> uploadBuffer;
+
 	log::ThrowIfFailed(
-		device->CreateCommittedResource(
-			&uploadProps,
-			D3D12_HEAP_FLAG_NONE,
+		allocator.CreateResource(
+			&allocDesc,
 			&bufferDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
+			&uploadAllocation,
 			IID_PPV_ARGS( &uploadBuffer )
 		)
 	);
@@ -514,6 +525,7 @@ void CommandList::UploadBufferData(Buffer& buffer, const void* data, size_t size
 	);
 
 	// Track upload buffer so it stays alive until GPU finishes
+	m_TrackedAllocations.push_back(uploadAllocation);
 	TrackObject( uploadBuffer );
 	TrackResource( buffer );
 }

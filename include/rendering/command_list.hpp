@@ -1,5 +1,7 @@
 #pragma once
 
+#include <d3d12ma/D3D12MemAlloc.h>
+
 namespace slate
 {
 	class Resource;
@@ -105,6 +107,8 @@ namespace slate
 		ID3D12RootSignature* m_RootSignature{ nullptr };
 
 		TrackedObjects m_TrackedObjects{};
+
+		std::vector<D3D12MA::Allocation*> m_TrackedAllocations;
 	};
 }
 

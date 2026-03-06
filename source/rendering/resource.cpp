@@ -19,16 +19,33 @@ Resource::Resource(const D3D12_RESOURCE_DESC& resourceDesc, const D3D12_CLEAR_VA
 
     auto heapProperty = CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_DEFAULT );
 
+    D3D12MA::ALLOCATION_DESC allocationDesc = {};
+    allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+    auto& allocator = App.Renderer().D3D12MA_Allocator();
+
     log::ThrowIfFailed(
-        device->CreateCommittedResource(
-            &heapProperty,
-            D3D12_HEAP_FLAG_NONE,
+        allocator.CreateResource(
+            &allocationDesc,
             &resourceDesc,
             D3D12_RESOURCE_STATE_COMMON,
             m_D3D12ClearValue.get(),
-            IID_PPV_ARGS( &m_D3D12Resource )
+            &m_Allocation,
+            IID_PPV_ARGS(&m_D3D12Resource)
         )
     );
+
+    // pre-d3d12ma way of creating a resource
+    //log::ThrowIfFailed(
+    //    device->CreateCommittedResource(
+    //        &heapProperty,
+    //        D3D12_HEAP_FLAG_NONE,
+    //        &resourceDesc,
+    //        D3D12_RESOURCE_STATE_COMMON,
+    //        m_D3D12ClearValue.get(),
+    //        IID_PPV_ARGS( &m_D3D12Resource )
+    //    ) 
+    //);
 
     ResourceStateTracker::AddGlobalResourceState(
         m_D3D12Resource.Get(), D3D12_RESOURCE_STATE_COMMON
@@ -43,46 +60,28 @@ Resource::Resource(ComPtr<ID3D12Resource> resource, const std::wstring& name)
     SetName( name );
 }
 
-Resource::Resource(const Resource& copy)
-    : m_D3D12Resource{ copy.m_D3D12Resource }
-    , m_ResourceName{ copy.m_ResourceName }
-{
-    if ( copy.m_D3D12ClearValue ) {
-        m_D3D12ClearValue = std::make_unique<D3D12_CLEAR_VALUE>(*copy.m_D3D12ClearValue);
-    }
-}
-
 Resource::Resource(Resource&& copy)
     : m_D3D12Resource  { std::move( copy.m_D3D12Resource   ) }
     , m_ResourceName   { std::move( copy.m_ResourceName    ) }
     , m_D3D12ClearValue{ std::move( copy.m_D3D12ClearValue ) }
+    , m_Allocation{ copy.m_Allocation }
 {
-}
-
-Resource& Resource::operator=(const Resource& other)
-{
-    if ( this != &other ) {
-        m_D3D12Resource = other.m_D3D12Resource;
-        m_ResourceName = other.m_ResourceName;
-        if ( other.m_D3D12ClearValue ) {
-            m_D3D12ClearValue = std::make_unique<D3D12_CLEAR_VALUE>(
-                *other.m_D3D12ClearValue
-            );
-        }
-    }
-
-    return *this;
+    copy.m_Allocation = nullptr;
+    copy.m_D3D12Resource = nullptr;
 }
 
 Resource& Resource::operator=(Resource&& other)
 {
     if ( this != &other ) {
+        Reset();
+        m_Allocation = other.m_Allocation;
         m_D3D12Resource = other.m_D3D12Resource;
         m_ResourceName = other.m_ResourceName;
         m_D3D12ClearValue = std::move( other.m_D3D12ClearValue );
 
         other.m_D3D12Resource.Reset();
         other.m_ResourceName.clear();
+        other.m_Allocation = nullptr;
     }
 
     return *this;
@@ -112,6 +111,16 @@ void Resource::SetName(const std::wstring& name)
 
 void Resource::Reset()
 {
+    if (m_Allocation)
+    {
+        m_Allocation->Release();
+        m_Allocation = nullptr;
+    }
     m_D3D12Resource.Reset();
     m_D3D12ClearValue.reset();
+}
+
+Resource::~Resource()
+{
+    Reset();
 }

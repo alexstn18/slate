@@ -53,6 +53,7 @@ namespace slate
 			void Reset();
 		private:
 			ComPtr<ID3D12Resource> m_D3D12Resource{ nullptr };
+			D3D12MA::Allocation* m_Allocation{ nullptr };
 
 			void* m_CPUPtr{ nullptr };
 			D3D12_GPU_VIRTUAL_ADDRESS m_GPUPtr{};

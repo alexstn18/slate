@@ -222,6 +222,7 @@ xcopy /y /d /c /e /i "assets" "$(OutDir)assets"</Command>
     <ClCompile Include="source\rendering\upload_buffer.cpp" />
     <ClCompile Include="source\rendering\vertex_buffer.cpp" />
     <ClCompile Include="source\rendering\texture.cpp" />
+    <ClCompile Include="source\rendering\structured_buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\rendering\constant_buffer.hpp" />
@@ -253,6 +254,7 @@ xcopy /y /d /c /e /i "assets" "$(OutDir)assets"</Command>
     <ClInclude Include="include\rendering\model.hpp" />
     <ClInclude Include="include\rendering\texture.hpp" />
     <ClInclude Include="include\interface.hpp" />
+    <ClInclude Include="include\rendering\structured_buffer.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -13,6 +13,8 @@
 #include "rendering/pipeline_state_object.hpp"
 #include "rendering/vertex_buffer.hpp"
 #include "rendering/index_buffer.hpp"
+#include "rendering/constant_buffer.hpp"
+#include "rendering/structured_buffer.hpp"
 #include "rendering/resource_state_tracker.hpp"
 
 #include "rendering/model.hpp"
@@ -50,6 +52,30 @@ Renderer::~Renderer()
 {
     // Flush the command queue.
     m_CommandQueue->Flush();
+
+    ClearTextureCache();
+    m_CommandList.reset();
+    m_Model.reset();
+    m_LightBuffer.reset();
+    m_CommandList.reset();
+
+    if (m_DepthStencilAllocation) {
+        m_DepthStencilAllocation->Release();
+        m_DepthStencilAllocation = nullptr;
+    }
+    m_DepthStencilBuffer.Reset();
+
+    D3D12MA::TotalStatistics stats = {};
+    m_Allocator->CalculateStatistics(&stats);
+
+    log::Info("D3D12MA: {} allocations still alive ({} bytes)",
+        stats.Total.Stats.AllocationCount,
+        stats.Total.Stats.AllocationBytes);
+
+    if (m_Allocator) {
+        m_Allocator->Release();
+        m_Allocator = nullptr;
+    }
 }
 
 bool Renderer::Initialize()
@@ -60,6 +86,13 @@ bool Renderer::Initialize()
     m_Adapter->Initialize( false );  // Adapter created here
     m_Device->CreateDevice( m_Adapter->GetAdapter() );  // Device created here
 	auto device = m_Device->GetDevice();
+
+    D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
+    allocatorDesc.pDevice = m_Device->GetDevice().Get();
+    allocatorDesc.pAdapter = m_Adapter->GetAdapter().Get();
+    allocatorDesc.Flags = D3D12MA_RECOMMENDED_ALLOCATOR_FLAGS;
+
+    log::ThrowIfFailed( D3D12MA::CreateAllocator( &allocatorDesc, &m_Allocator ) );
 
 	m_CommandQueue->Initialize();
 	m_SwapChain->Initialize( hWnd, m_Width, m_Height, m_NumBuffers );
@@ -103,15 +136,19 @@ bool Renderer::Initialize()
     m_Light.Position = glm::vec3( 3.0f, 3.0f, 5.0f );
     m_Light.Intensity = 1.0f;
 
-    m_Constants.MVP = m_MVPMatrix;
-    //m_Constants.lightInfo.LightToLightInfo(m_Light);
+    std::vector<Light> lights = { m_Light };
+    m_CommandList->Reset(m_CommandAllocators[0]);
+    m_LightBuffer = StructuredBuffer::Create(u32(lights.size()), sizeof(Light), lights.data());
+    m_CommandList->Close();
+    u64 fence = m_CommandQueue->ExecuteCommandLists({ m_CommandList->Get().Get() });
+    m_CommandQueue->WaitForFenceValue(fence);
+    FlushUploads();
 
 	return true;
 }
 
 void Renderer::Shutdown()
 {
-    m_CommandQueue->Flush();
     m_Interface->Shutdown();
 }
 
@@ -160,6 +197,8 @@ void Renderer::Update()
     m_Constants.MVP = m_MVPMatrix;
     // m_Constants.lightInfo.LightToLightInfo(m_Light);
 
+    m_Model->Update(projection * view, eyePos);
+
     m_Interface->NewFrame();
     m_Interface->Update( float( deltaSeconds ) );
 }
@@ -167,76 +206,82 @@ void Renderer::Update()
 void Renderer::Render()
 {
     u32 frameIndex = m_SwapChain->GetCurrentBackBufferIndex();
-    auto backBuffer = m_SwapChain->GetBackBuffer( frameIndex );
+    auto backBuffer = m_SwapChain->GetBackBuffer(frameIndex);
+    auto rtv = m_RTVDescriptorHeap->GetCPUHandle(frameIndex);
+    m_RenderTarget->SetRenderTargetView(rtv);
 
-    auto rtv = m_RTVDescriptorHeap->GetCPUHandle( frameIndex );
-    m_RenderTarget->SetRenderTargetView( rtv );
-
-    m_CommandList->Reset( m_CommandAllocators[ frameIndex ] );
+    m_CommandList->Reset(m_CommandAllocators[frameIndex]);
 
     auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
         backBuffer.Get(),
         D3D12_RESOURCE_STATE_PRESENT,
         D3D12_RESOURCE_STATE_RENDER_TARGET
     );
-    m_CommandList->Get()->ResourceBarrier( 1u, &barrier );
+    m_CommandList->Get()->ResourceBarrier(1u, &barrier);
 
-    m_CommandList->SetRenderTarget( *m_RenderTarget );
-    m_CommandList->ClearRenderTargetView( rtv, &m_ClearColor[ 0 ] );
-    auto dsv = m_DSVDescriptorHeap->GetCPUHandle( 0u );
-    m_CommandList->ClearDepthStencilView( dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0u );
+    m_CommandList->SetRenderTarget(*m_RenderTarget);
+    m_CommandList->ClearRenderTargetView(rtv, &m_ClearColor[0]);
+    auto dsv = m_DSVDescriptorHeap->GetCPUHandle(0u);
+    m_CommandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0u);
 
     m_CommandList->SetPipelineState(
-        std::shared_ptr<PipelineStateObject>( m_PipelineState.get(), [](auto*) {} )
+        std::shared_ptr<PipelineStateObject>(m_PipelineState.get(), [](auto*) {})
     );
     m_CommandList->SetGraphicsRootSignature(
-        std::shared_ptr<RootSignature>( m_RootSignature.get(), [](auto*) {} )
+        std::shared_ptr<RootSignature>(m_RootSignature.get(), [](auto*) {})
     );
-    m_CommandList->SetGraphics32BitConstants(
-        0u,
-        sizeof(Constants) / 4,
-        &m_Constants
-    );
-    ID3D12DescriptorHeap* heaps[] = { m_SRVDescriptorHeap->Get().Get() };
-    m_CommandList->Get()->SetDescriptorHeaps( 1u, heaps );
-    m_CommandList->SetViewport( m_Viewport );
-    m_CommandList->SetScissorRect( m_ScissorRect );
-    m_CommandList->SetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-    for ( const auto& mesh : m_Model->GetMeshes() ) {
-        m_CommandList->SetVertexBuffer( 0u, *mesh->GetVertexBuffer() );
-        m_CommandList->SetIndexBuffer( *mesh->GetIndexBuffer() );
 
-        // bind this mesh's textures
+    ID3D12DescriptorHeap* heaps[] = { m_SRVDescriptorHeap->Get().Get() };
+    m_CommandList->Get()->SetDescriptorHeaps(1u, heaps);
+
+    m_CommandList->SetViewport(m_Viewport);
+    m_CommandList->SetScissorRect(m_ScissorRect);
+    m_CommandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    // root index 0: model CBV (b0)
+    m_CommandList->Get()->SetGraphicsRootDescriptorTable(
+        0u, m_Model->GetConstantBuffer()->GetGPUHandle()
+    );
+
+    // root index 2: light structured buffer (t4)
+    m_CommandList->Get()->SetGraphicsRootDescriptorTable(
+        2u, m_LightBuffer->GetGPUSRVHandle()
+    );
+
+    for (const auto& mesh : m_Model->GetMeshes()) {
         const auto& material = mesh->GetMaterial();
-        if ( material->Albedo ) {
+
+        // root index 1: textures t0-t3
+        if (material && material->Albedo) {
             m_CommandList->Get()->SetGraphicsRootDescriptorTable(
                 1u, material->Albedo->GetGPUHandle()
             );
         }
 
-        m_CommandList->DrawIndexed( u32( mesh->GetIndexCount() ), 1u, 0u, 0u, 0u );
+        m_CommandList->SetVertexBuffer(0u, *mesh->GetVertexBuffer());
+        m_CommandList->SetIndexBuffer(*mesh->GetIndexBuffer());
+        m_CommandList->DrawIndexed(u32(mesh->GetIndexCount()), 1u, 0u, 0u, 0u);
     }
 
     m_Interface->Render();
 
-    // Transition back to present
     barrier = CD3DX12_RESOURCE_BARRIER::Transition(
         backBuffer.Get(),
         D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_PRESENT
     );
-    m_CommandList->Get()->ResourceBarrier( 1, &barrier );
+    m_CommandList->Get()->ResourceBarrier(1, &barrier);
 
     m_CommandList->Close();
-    u64 fenceValue = m_CommandQueue->ExecuteCommandLists( { m_CommandList->Get().Get() } );
-
-    m_SwapChain->Present( true );
-    m_CommandQueue->WaitForFenceValue( fenceValue );
+    u64 fenceValue = m_CommandQueue->ExecuteCommandLists({ m_CommandList->Get().Get() });
+    m_SwapChain->Present(true);
+    m_CommandQueue->WaitForFenceValue(fenceValue);
 }
 
-void Renderer::TrackUpload(ComPtr<ID3D12Resource> resource)
+void Renderer::TrackUpload(ComPtr<ID3D12Resource> resource, 
+    D3D12MA::Allocation* allocation)
 {
-    m_PendingUploads.push_back( std::move( resource ) );
+    m_PendingUploads.push_back({ std::move(resource), allocation });
 }
 
 ComPtr<IDXGIAdapter4> Renderer::D3D12Adapter() const noexcept
@@ -310,19 +355,21 @@ void Renderer::CreateDepthStencil()
     depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
     depthOptimizedClearValue.DepthStencil.Stencil = 0;
 
-    CD3DX12_HEAP_PROPERTIES depthHeapProps( D3D12_HEAP_TYPE_DEFAULT );
     CD3DX12_RESOURCE_DESC depthDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_D32_FLOAT, m_Width, m_Height,
         1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL
     );
 
+    D3D12MA::ALLOCATION_DESC allocDesc = {};
+    allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
     log::ThrowIfFailed(
-        device->CreateCommittedResource(
-            &depthHeapProps,
-            D3D12_HEAP_FLAG_NONE,
+        m_Allocator->CreateResource(
+            &allocDesc,
             &depthDesc,
             D3D12_RESOURCE_STATE_DEPTH_WRITE,
             &depthOptimizedClearValue,
+            &m_DepthStencilAllocation,
             IID_PPV_ARGS( &m_DepthStencilBuffer )
         )
     );
@@ -342,10 +389,11 @@ void Renderer::CreateDepthStencil()
 
 void Renderer::CreateRootSignature()
 {
-    m_RootSignature->AddRootConstants( 0u, sizeof( Constants ) / 4 )
-                    .AddDescriptorTable()
-                    .AddSRVs( 0u, 4u )
-                    .AddStaticSampler( 0u );
+    m_RootSignature
+        ->AddDescriptorTable().AddCBVs(0u, 1u)   // b0 cbv
+        .AddDescriptorTable().AddSRVs(0u, 4u)    // t0-t3 textures  
+        .AddDescriptorTable().AddSRVs(4u, 1u)    // t4 lights
+        .AddStaticSampler(0u);
     m_RootSignature->Initialize();
 }
 
@@ -390,6 +438,14 @@ void Renderer::CompileShaders()
 
 void Renderer::FlushUploads()
 {
+    for (auto& upload : m_PendingUploads)
+    {
+        if (upload.Allocation)
+        {
+            upload.Allocation->Release();
+            upload.Allocation = nullptr;
+        }
+    }
     m_PendingUploads.clear();
 }
 

@@ -66,18 +66,20 @@ UploadBuffer::Page::Page(size_t sizeInBytes) :
 	m_CPUPtr{ nullptr },
 	m_GPUPtr{ D3D12_GPU_VIRTUAL_ADDRESS( 0ull ) }
 {
-	auto uploadProperty = CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_UPLOAD );
+	auto& allocator = App.Renderer().D3D12MA_Allocator();
 	auto resourceDescBuf = CD3DX12_RESOURCE_DESC::Buffer( m_PageSize );
 
-	auto device = App.Renderer().D3D12Device();
+	D3D12MA::ALLOCATION_DESC allocDesc = {};
+	allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+
 	log::ThrowIfFailed(
-		device->CreateCommittedResource(
-			&uploadProperty,
-			D3D12_HEAP_FLAG_NONE,
+		allocator.CreateResource(
+			&allocDesc,
 			&resourceDescBuf,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS( &m_D3D12Resource )
+			&m_Allocation,
+			IID_PPV_ARGS(&m_D3D12Resource)
 		)
 	);
 
@@ -90,6 +92,11 @@ UploadBuffer::Page::~Page()
 	m_D3D12Resource->Unmap( 0, nullptr );
 	m_CPUPtr = nullptr;
 	m_GPUPtr = D3D12_GPU_VIRTUAL_ADDRESS( 0ull );
+
+	if ( m_Allocation ) {
+		m_Allocation->Release();
+		m_Allocation = nullptr;
+	}
 }
 
 bool UploadBuffer::Page::HasSpace(size_t sizeInBytes, size_t alignment) const

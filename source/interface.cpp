@@ -57,7 +57,11 @@ void Interface::NewFrame()
 
 void Interface::Update(float)
 {
-	ImGui::ShowDemoWindow();
+	ImGui::Begin("slate-dbg-wnd");
+	{
+		//ImGui::Text("This is a test");
+	}
+	ImGui::End();
 }
 
 void Interface::Render()

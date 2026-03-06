@@ -50,7 +50,9 @@ void Device::CreateDevice(ComPtr<IDXGIAdapter4> adapter)
 			// These warnings occur when a frame is captured using the graphics debugger integrated in Visual Studio. 
 			// Since I think this bug will never be fixed in the debugger, it's best to just ignore this warning.
 			D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
-			D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE, };
+			D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE, 
+			D3D12_MESSAGE_ID_CREATERESOURCE_STATE_IGNORED,
+		};
 		D3D12_INFO_QUEUE_FILTER NewFilter = {};
 		NewFilter.DenyList.NumSeverities = _countof( Severities );
 		NewFilter.DenyList.pSeverityList = Severities;

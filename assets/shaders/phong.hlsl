@@ -17,30 +17,41 @@ struct PSInput
     float3 BiTangent : BITANGENT;
 };
 
-struct LightInfo
+struct Light
 {
     float3 Color;
+    float Intensity;
     float3 Position;
+    float Range;
     float3 Direction;
-    float  Intensity;
-    uint   Type;
+    uint Type;
 };
 
-#define TYPE_DIRECTIONAL 0
-#define TYPE_POINT 1
-
-Texture2D albedoTexture : register(t0);
-Texture2D normalTexture : register(t1);
-Texture2D occlusionTexture : register(t2);
-Texture2D emissionTexture : register(t3);
-SamplerState linearSampler : register(s0);
+#define LIGHT_TYPE_DIRECTIONAL 0
+#define LIGHT_TYPE_POINT       1
 
 cbuffer Constants : register(b0)
 {
     float4x4 NormalMatrix;
     float4x4 Model;
     float4x4 MVP;
+    float3 CameraPos;
+    uint LightCount;
 };
+
+Texture2D albedoTexture : register(t0);
+Texture2D normalTexture : register(t1);
+Texture2D occlusionTexture : register(t2);
+Texture2D emissionTexture : register(t3);
+
+StructuredBuffer<Light> lights : register(t4);
+
+SamplerState linearSampler : register(s0);
+
+// @TODO: move specular params into Constants or material CBV
+static const float SPECULAR_STRENGTH = 0.5f;
+static const float SPECULAR_GLOSSINESS = 0.25f;
+static const float AMBIENT_INTENSITY = 0.05f;
 
 PSInput VSMain(VSInput input)
 {
@@ -59,108 +70,95 @@ float3 SRGBToLinear(float3 sRGB)
     return pow(sRGB, 2.2f);
 }
 
+float3 LinearToSRGB(float3 l)
+{
+    return pow(l, 1.0f / 2.2f);
+}
+
 float3 ACESFilmic(float3 x)
 {
-    // Narkowicz 2015 approximation
     float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
     return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
 }
 
-float3 LinearToSRGB(float3 linearColor)
+float3 ComputeTBNNormal(PSInput input)
 {
-    return pow(linearColor, 1.0f / 2.2f);
-}
-
-float4 LightingCalculation(PSInput input)
-{
-    // @TODO: change this to be included in the constant buffer
-    // once you have a proper camera
-    const float3 CAMERA_POS = float3(0.0f, 0.0f, 5.0f);
-    const float SPECULAR_STRENGTH = 0.5f;
-    const float SPECULAR_GLOSSINESS = 0.25f;
-    const float AMBIENT_INTENSITY = 0.05f;
-    
-    // @TODO: point light attenuation values, move to CBV
-    const float LIGHT_RANGE = 10000.0f;
-    
-    // @TODO: move to using a CBV upload buffer instead of hardcoding stuff
-    LightInfo lightInfo;
-    lightInfo.Type = TYPE_DIRECTIONAL;
-    lightInfo.Color = float3(1.0f, 0.95f, 0.8f);
-    lightInfo.Intensity = 1.0f;
-    
     float3 T = normalize(input.Tangent);
-    float3 B = normalize(input.BiTangent);
     float3 Nv = normalize(input.Normal);
-    
-    T = normalize(T - dot(T, Nv) * Nv); // gram-schmidt
-    
-    B = cross(Nv, T);
-    
-    float3x3 TBN = { 
+    T = normalize(T - dot(T, Nv) * Nv); // Gram-Schmidt
+    float3 B = cross(Nv, T);
+
+    float3x3 TBN =
+    {
         T.x, B.x, Nv.x,
         T.y, B.y, Nv.y,
         T.z, B.z, Nv.z
     };
-    
-    float4 normalTex = normalTexture.Sample(linearSampler, input.TexCoord);
-     // unpack normals from [0, 1] back to [-1, 1]
-    float3 tangentSpaceNormal = normalTex.rgb * 2.0f - 1.0f;
-    float3 N = normalize(mul(TBN, tangentSpaceNormal)); // normal-mapping
-    
-    // float3 N = normalize(input.Normal);
-    
-    float3 viewDir = normalize(CAMERA_POS - input.WorldPos);
-    float3 L = float3(0.0f, 0.0f, 0.0f);
-    float specularExponent = exp2(SPECULAR_GLOSSINESS * 8) + 2;
-    float attenuation = 1.0f;
-    if(lightInfo.Type == TYPE_DIRECTIONAL)
+
+    // unpack normals from [0, 1] back to [-1, 1]
+    float3 tangentNormal = normalTexture.Sample(linearSampler, input.TexCoord).rgb * 2.0f - 1.0f;
+    return normalize(mul(TBN, tangentNormal));
+}
+
+float4 LightingCalculation(PSInput input)
+{
+    float3 N = ComputeTBNNormal(input);
+    float3 viewDir = normalize(CameraPos - input.WorldPos);
+    float specExp = exp2(SPECULAR_GLOSSINESS * 8) + 2;
+
+    float3 accumulated = float3(0.0f, 0.0f, 0.0f);
+
+    for (uint i = 0; i < LightCount; ++i)
     {
-        lightInfo.Direction = float3(15.0f, 0.0f, -10.0f);
-        L = normalize(-lightInfo.Direction);
+        Light light = lights[i];
+
+        float3 L = float3(0.0f, 0.0f, 0.0f);
+        float attenuation = 1.0f;
+
+        if (light.Type == LIGHT_TYPE_DIRECTIONAL)
+        {
+            L = normalize(-light.Direction);
+        }
+        else // LIGHT_TYPE_POINT
+        {
+            float3 toLight = light.Position - input.WorldPos;
+            float dist = length(toLight);
+            L = normalize(toLight);
+
+            attenuation = saturate(1.0f - dist / light.Range);
+            attenuation *= attenuation;
+
+            if (attenuation <= 0.01f)
+                continue;
+        }
+
+        float3 ambient = light.Color * AMBIENT_INTENSITY;
+
+        float lambert = dot(N, L);
+        float diff = max(lambert, 0.0f);
+        float3 diffuse = diff * light.Intensity * light.Color;
+
+        float3 halfway = normalize(L + viewDir);
+        float spec = pow(max(dot(N, halfway), 0.0f) * (lambert > 0), specExp) * SPECULAR_GLOSSINESS;
+        float3 specular = spec * light.Color;
+
+        accumulated += (ambient + diffuse + specular) * attenuation;
     }
-    else
-    {
-        lightInfo.Position = float3(3.0f, 3.0f, 5.0f);
-        L = normalize(lightInfo.Position - input.WorldPos);
-        
-        float dist = length(lightInfo.Position - input.WorldPos);
-        attenuation = saturate(1.0f - dist / LIGHT_RANGE);
-        attenuation *= attenuation;
-    }
-    
-    float4 ambient = float4(lightInfo.Color * AMBIENT_INTENSITY, 1.0f);
-    float lambertian = dot(N, L);
-    float diff = max(lambertian, 0.0f);
-    float4 diffuse = float4(diff * lightInfo.Intensity * lightInfo.Color, 1.0f);
-    float3 halfwayDir = normalize(L + viewDir);
-    // float3 reflectDir = reflect(-lightDir, input.Normal); // this is used in phong, not blinn-phong
-    float spec = max(dot(N, halfwayDir), 0.0f) * (lambertian > 0);
-    spec = pow(spec, specularExponent) * SPECULAR_GLOSSINESS; // * gloss is an approximation for PBR-like i think?
-    float4 specular = float4(spec * lightInfo.Color, 1.0f);
-    
-    ambient *= attenuation;
-    diffuse *= attenuation;
-    specular *= attenuation;
-    
-    float4 emission = emissionTexture.Sample(linearSampler, input.TexCoord);
-    
-    emission.rgb = SRGBToLinear(emission.rgb);
-    
-    float4 final = ambient + diffuse + specular + emission;
-    return final;
+
+    float3 emission = SRGBToLinear(emissionTexture.Sample(linearSampler, input.TexCoord).rgb);
+
+    return float4(accumulated + emission, 1.0f);
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    float4 tex = albedoTexture.Sample(linearSampler, input.TexCoord);
-    
-    tex.rgb = SRGBToLinear(tex.rgb);
-    
-    float4 color = LightingCalculation(input) * tex;
-    
-    color.rgb = ACESFilmic(color.rgb); // tonemap
-    color.rgb = LinearToSRGB(color.rgb); // "encode" for display
-    
-    return color;
+    float3 albedo = SRGBToLinear(albedoTexture.Sample(linearSampler, input.TexCoord).rgb);
+
+    float4 lighting = LightingCalculation(input);
+    float3 color = lighting.rgb * albedo;
+
+    color = ACESFilmic(color);
+    color = LinearToSRGB(color);
+
+    return float4(color, 1.0f);
 }

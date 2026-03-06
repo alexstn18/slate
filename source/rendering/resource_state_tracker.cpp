@@ -77,8 +77,10 @@ void ResourceStateTracker::ResourceBarrier(const D3D12_RESOURCE_BARRIER& barrier
 void ResourceStateTracker::TransitionResource(
 	ID3D12Resource* resource, D3D12_RESOURCE_STATES stateAfter, UINT subResource) {
 	if ( resource ) {
-		CD3DX12_RESOURCE_BARRIER::Transition(
-			resource, D3D12_RESOURCE_STATE_COMMON, stateAfter, subResource
+		ResourceBarrier(
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				resource, D3D12_RESOURCE_STATE_COMMON, stateAfter, subResource
+			)
 		);
 	}
 }

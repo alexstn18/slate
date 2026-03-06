@@ -10,7 +10,7 @@ Application slate::App;
 void Application::Initialize()
 {
 	// TODO: load W and H from config
-	m_Window = new ::Window( 1280, 720, "Slate" );
+	m_Window = new ::Window( 1920, 1080, "Slate" );
 	m_Renderer = new ::Renderer( m_Window->GetWidth(), m_Window->GetHeight() );
 
 	if (m_Window->Initialize()) {

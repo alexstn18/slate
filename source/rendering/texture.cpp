@@ -83,6 +83,7 @@ void Texture::Initialize(
 {
     auto device = App.Renderer().D3D12Device();
     auto commandList = App.Renderer().D3D12CommandList();
+    auto& allocator = App.Renderer().D3D12MA_Allocator();
 
     m_ResourceDesc.MipLevels = 1;
     // @TODO: add function for DXGI_FORMAT checking
@@ -93,15 +94,16 @@ void Texture::Initialize(
     m_ResourceDesc.SampleDesc.Count = 1;
     m_ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 
-    CD3DX12_HEAP_PROPERTIES heapProps( D3D12_HEAP_TYPE_DEFAULT );
+    D3D12MA::ALLOCATION_DESC allocDesc = {};
+    allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 
     log::ThrowIfFailed(
-        device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
+        allocator.CreateResource(
+            &allocDesc,
             &m_ResourceDesc,
             D3D12_RESOURCE_STATE_COPY_DEST,
             nullptr,
+            &m_Allocation,
             IID_PPV_ARGS( m_D3D12Resource.ReleaseAndGetAddressOf() )
         )
     );
@@ -114,17 +116,21 @@ void Texture::Initialize(
         &uploadSize
     );
 
+    D3D12MA::ALLOCATION_DESC uploadAllocDesc = {};
+    uploadAllocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+    auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadSize);
+
+    D3D12MA::Allocation* uploadAllocation{ nullptr };
     ComPtr<ID3D12Resource> uploadResource{ nullptr };
-    CD3DX12_HEAP_PROPERTIES uploadHeap( D3D12_HEAP_TYPE_UPLOAD );
-    auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer( uploadSize );
+    
     log::ThrowIfFailed(
-        device->CreateCommittedResource(
-            &uploadHeap,
-            D3D12_HEAP_FLAG_NONE,
+        allocator.CreateResource(
+            &uploadAllocDesc,
             &uploadDesc,
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
-            IID_PPV_ARGS( uploadResource.ReleaseAndGetAddressOf() )
+            &uploadAllocation,
+            IID_PPV_ARGS(uploadResource.ReleaseAndGetAddressOf())
         )
     );
 
@@ -161,7 +167,7 @@ void Texture::Initialize(
 
     auto& srvDscHeap = App.Renderer().GetSRVDescriptorHeap();
 
-    u32 slot = App.Renderer().IncrementTextureCount();
+    u32 slot = srvDscHeap.GetNextIndex();
     m_SRVHandle = srvDscHeap.GetCPUHandle(slot);
     m_GPUHandle = srvDscHeap.GetGPUHandle(slot);
 
@@ -173,5 +179,5 @@ void Texture::Initialize(
 
     SetName( name );
 
-    App.Renderer().TrackUpload( std::move( uploadResource ) );
+    App.Renderer().TrackUpload( std::move( uploadResource ), uploadAllocation );
 }

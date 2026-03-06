@@ -6,6 +6,8 @@
 #include "rendering/command_list.hpp"
 #include "rendering/command_queue.hpp"
 
+#include "rendering/constant_buffer.hpp"
+
 #include "assimp/Importer.hpp"
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
@@ -162,6 +164,11 @@ namespace
 	}
 }
 
+void slate::ClearTextureCache()
+{
+	m_TextureCache.clear();
+}
+
 Model::Model(const std::filesystem::path& filePath)
 {
 	Assimp::Importer importer{};
@@ -186,6 +193,8 @@ Model::Model(const std::filesystem::path& filePath)
 	log::Info( "Loaded {} meshes", scene->mNumMeshes );
 	ProcessNode( *this, scene->mRootNode, scene );
 	log::Info( "Processed {} meshes total", m_Meshes.size() );
+
+	m_ConstantBuffer = ConstantBuffer::Create( sizeof( ModelConstants ) );
 }
 
 std::shared_ptr<Model> Model::Load(const std::filesystem::path& path, 
@@ -214,4 +223,18 @@ std::shared_ptr<Model> Model::Load(const std::filesystem::path& path,
 void Model::AddMesh(std::shared_ptr<Mesh> mesh)
 {
 	m_Meshes.emplace_back( std::move( mesh ) );
+}
+
+void Model::Update(const glm::mat4& VP, const glm::vec3& cameraPos)
+{
+	const glm::mat4& modelMatrix = m_Transform.World();
+
+	m_ModelConstants.NormalMatrix = 
+		glm::transpose( glm::inverse( modelMatrix ) );
+	m_ModelConstants.Model = modelMatrix;
+	m_ModelConstants.MVP = VP * modelMatrix;
+	m_ModelConstants.cameraPos = cameraPos;
+	m_ModelConstants.LightCount = 1u;
+
+	m_ConstantBuffer->SetData( &m_ModelConstants, sizeof( ModelConstants ) );
 }

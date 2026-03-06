@@ -14,6 +14,7 @@ namespace slate
 		RootSignature& operator=(const RootSignature&) = delete;
 
 		RootSignature& AddRootCBV(u32 shaderRegister);
+		RootSignature& AddCBVs(u32 baseRegister, u32 count);
 		RootSignature& AddRootConstants(u32 shaderRegister, u32 num32BitValues);
 		RootSignature& AddDescriptorTable();
 		RootSignature& AddSRVs(u32 baseRegister, u32 count);

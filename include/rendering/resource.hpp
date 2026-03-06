@@ -1,5 +1,7 @@
 #pragma once
 
+#include <d3d12ma/D3D12MemAlloc.h>
+
 // source:
 // https://github.com/jpvanoosten/LearningDirectX12/blob/main/DX12Lib/src/Resource.cpp
 
@@ -13,10 +15,10 @@ namespace slate
 			const D3D12_CLEAR_VALUE* clearValue = nullptr,
 			const std::wstring& name = L"");
 		Resource(ComPtr<ID3D12Resource> resource, const std::wstring& name = L"");
-		Resource(const Resource& copy);
+		Resource(const Resource&) = delete;
 		Resource(Resource&& copy);
 
-		Resource& operator=(const Resource& other);
+		Resource& operator=(const Resource&) = delete;
 		Resource& operator=(Resource&& other);
 
 		bool IsValid() const
@@ -56,8 +58,9 @@ namespace slate
 		 */
 		virtual void Reset();
 	protected:
-		virtual ~Resource() = default;
+		virtual ~Resource();
 
+		D3D12MA::Allocation* m_Allocation{ nullptr };
 		ComPtr<ID3D12Resource> m_D3D12Resource{ nullptr };
 		D3D12_FEATURE_DATA_FORMAT_SUPPORT m_FormatSupport{};
 		std::unique_ptr<D3D12_CLEAR_VALUE> m_D3D12ClearValue{ nullptr };

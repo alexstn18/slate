@@ -63,10 +63,15 @@ void RootSignature::Initialize()
     m_RootSignatureDesc.Flags = 
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-    ComPtr<ID3DBlob> blob;
+    ComPtr<ID3DBlob> blob{ nullptr };
+    ComPtr<ID3DBlob> errorBlob{ nullptr };
     D3D12SerializeRootSignature(
-        &m_RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, nullptr
+        &m_RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, &errorBlob
     );
+
+    if (errorBlob) {
+        log::Critical("{}", (char*)errorBlob->GetBufferPointer());
+    }
 
     device->CreateRootSignature( 0u, blob->GetBufferPointer(), blob->GetBufferSize(),
         IID_PPV_ARGS( &m_RootSignature ) );
@@ -116,6 +121,17 @@ RootSignature& RootSignature::AddRootConstants(
     param.Constants.Num32BitValues = num32BitValues;
 
     m_Params.push_back( param );
+    return *this;
+}
+
+RootSignature& slate::RootSignature::AddCBVs(u32 baseRegister, u32 count)
+{
+    D3D12_DESCRIPTOR_RANGE range = {};
+    range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+    range.NumDescriptors = count;
+    range.BaseShaderRegister = baseRegister;
+    range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    m_Tables.back().ranges.push_back( range );
     return *this;
 }
 
