@@ -524,6 +524,9 @@ void CommandList::UploadBufferData(Buffer& buffer, const void* data, size_t size
 		buffer.D3D12Resource().Get(), 0ull, uploadBuffer.Get(), 0ull, sizeInBytes
 	);
 
+	TransitionBarrier(buffer.D3D12Resource(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	FlushResourceBarriers();
+
 	// Track upload buffer so it stays alive until GPU finishes
 	m_TrackedAllocations.push_back(uploadAllocation);
 	TrackObject( uploadBuffer );

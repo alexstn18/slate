@@ -56,6 +56,7 @@ namespace slate {
 
 		[[nodiscard]] const std::vector<ComPtr<ID3D12CommandAllocator>>& GetCommandAllocators() const noexcept { return m_CommandAllocators; }
 		[[nodiscard]] std::vector<Light>& GetLights() noexcept { return m_Lights; }
+		[[nodiscard]] StructuredBuffer& GetLightBuffer() const noexcept { return *m_LightBuffer; }
 		[[nodiscard]] Camera& GetCamera() noexcept { return m_Camera; }
 		[[nodiscard]] Model& GetModel() noexcept { return *m_Model; }
 	private:

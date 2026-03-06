@@ -20,6 +20,9 @@ namespace slate {
 		D3D12_GPU_DESCRIPTOR_HANDLE GetGPUSRVHandle() const noexcept { return m_GPUSRVHandle; }
 		u32 GetElementCount() const noexcept { return m_ElementCount; }
 		u32 GetStride()       const noexcept { return m_Stride; }
+
+		void SetData(const void* data, size_t sizeInBytes);
+
 		~StructuredBuffer() = default;
 	protected:
 		StructuredBuffer(ComPtr<ID3D12Resource> resource,
@@ -31,6 +34,8 @@ namespace slate {
 		D3D12_CPU_DESCRIPTOR_HANDLE m_SRVHandle{};
 		D3D12_CPU_DESCRIPTOR_HANDLE m_UAVHandle{};
 		D3D12_GPU_DESCRIPTOR_HANDLE m_GPUSRVHandle{};
+
+		void* m_MappedData{ nullptr };
 	};
 }
 

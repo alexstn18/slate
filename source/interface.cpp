@@ -15,6 +15,7 @@
 
 #include "rendering/render_components.hpp"
 #include "rendering/model.hpp"
+#include "rendering/structured_buffer.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/type_ptr.hpp>
@@ -85,6 +86,7 @@ void Interface::Update(float)
 		transform.SetFromMatrix(matrix);
 	}
 	
+	bool dirty = false;
 	ImGui::Begin("slate-dbg-wnd");
 	{
 		if (ImGui::RadioButton("Translate", manipOperation == ImGuizmo::TRANSLATE)) manipOperation = ImGuizmo::TRANSLATE;
@@ -98,15 +100,25 @@ void Interface::Update(float)
 		ImGui::SliderAngle("pitch", &cam.pitch, -89.f, 89.f);
 		ImGui::SliderAngle("fovY", &cam.fovY, 10.f, 170.f);
 
-		for ( auto& light : App.Renderer().GetLights() ) {
-			ImReflect::Input("Light", light);
-			ImGui::ColorEdit3("Color", &light.Color[0]);
+		for (auto& light : App.Renderer().GetLights()) {
+			auto response = ImReflect::Input("Light", light);
+			if (response.get<Light>().is_changed()) dirty = true;
+			if (ImGui::ColorEdit3("Color", &light.Color[0])) dirty = true;
 			const char* types[] = { "Directional", "Point" };
 			i32 t = (i32)light.type;
-			if (ImGui::Combo("Type", &t, types, 2))
+			if (ImGui::Combo("Type", &t, types, 2)) {
 				light.type = (slate::Light::Type)t;
+				dirty = true;
+			}
 		}
 	}
+
+	if (dirty)
+	{
+		auto& lights = App.Renderer().GetLights();
+		App.Renderer().GetLightBuffer().SetData(lights.data(), lights.size() * sizeof(Light));
+	}
+
 	ImGui::End();
 }
 

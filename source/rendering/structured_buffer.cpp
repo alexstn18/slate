@@ -15,12 +15,12 @@ std::unique_ptr<StructuredBuffer> StructuredBuffer::Create(
     u64 sizeInBytes{ u64( elementCount ) * stride };
     auto desc = CD3DX12_RESOURCE_DESC::Buffer(
         sizeInBytes,
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RESOURCE_FLAG_NONE,
         D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT
     );
 
     D3D12MA::ALLOCATION_DESC allocDesc = {};
-    allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+    allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
 
     ComPtr<ID3D12Resource> resource{ nullptr };
     D3D12MA::Allocation* allocation{ nullptr };
@@ -29,7 +29,7 @@ std::unique_ptr<StructuredBuffer> StructuredBuffer::Create(
         allocator.CreateResource(
             &allocDesc,
             &desc,
-            D3D12_RESOURCE_STATE_COMMON,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
             &allocation,
             IID_PPV_ARGS( &resource )
@@ -37,7 +37,7 @@ std::unique_ptr<StructuredBuffer> StructuredBuffer::Create(
     );
 
     ResourceStateTracker::AddGlobalResourceState(
-        resource.Get(), D3D12_RESOURCE_STATE_COMMON
+        resource.Get(), D3D12_RESOURCE_STATE_GENERIC_READ
     );
 
     auto sb = std::unique_ptr<StructuredBuffer>(
@@ -45,6 +45,9 @@ std::unique_ptr<StructuredBuffer> StructuredBuffer::Create(
     );
 
     sb->m_Allocation = allocation;
+
+    CD3DX12_RANGE readRange(0, 0); // no read from CPU
+    sb->m_D3D12Resource->Map(0, &readRange, &sb->m_MappedData);
 
     // SRV
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -72,33 +75,40 @@ std::unique_ptr<StructuredBuffer> StructuredBuffer::Create(
     sb->m_GPUSRVHandle = gpuHandle;
 
     // UAV
-    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-    uavDesc.Format = DXGI_FORMAT_UNKNOWN;
-    uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-    uavDesc.Buffer.FirstElement = 0ull;
-    uavDesc.Buffer.NumElements = elementCount;
-    uavDesc.Buffer.StructureByteStride = stride;
+    //D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+    //uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+    //uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+    //uavDesc.Buffer.FirstElement = 0ull;
+    //uavDesc.Buffer.NumElements = elementCount;
+    //uavDesc.Buffer.StructureByteStride = stride;
 
-    u32 uavSlot = srvDescHeap.GetNextIndex();
-    auto uavCPUHandle = srvDescHeap.GetCPUHandle( uavSlot );
-    device->CreateUnorderedAccessView(
-        resource.Get(),
-        nullptr,
-        &uavDesc,
-        uavCPUHandle
-    );
+    //u32 uavSlot = srvDescHeap.GetNextIndex();
+    //auto uavCPUHandle = srvDescHeap.GetCPUHandle( uavSlot );
+    //device->CreateUnorderedAccessView(
+    //    resource.Get(),
+    //    nullptr,
+    //    &uavDesc,
+    //    uavCPUHandle
+    //);
 
-    sb->m_UAVHandle = uavCPUHandle;
+    //sb->m_UAVHandle = uavCPUHandle;
 
     if ( data ) {
-        App.Renderer().GetCommandList()->UploadBufferData(
-            *sb,
-            data,
-            sizeInBytes
-        );
+        sb->SetData(data, sizeInBytes);
+        //App.Renderer().GetCommandList()->UploadBufferData(
+        //    *sb,
+        //    data,
+        //    sizeInBytes
+        //);
     }
 
 	return sb;
+}
+
+void StructuredBuffer::SetData(const void* data, size_t sizeInBytes)
+{
+    assert(m_MappedData && sizeInBytes <= u64(m_ElementCount) * m_Stride);
+    memcpy(m_MappedData, data, sizeInBytes);
 }
 
 StructuredBuffer::StructuredBuffer(
