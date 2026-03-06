@@ -132,13 +132,15 @@ bool Renderer::Initialize()
 
     m_Interface->Initialize();
 
-    m_Light.Color = glm::vec3( 1.0f, 0.95f, 0.8f );
-    m_Light.Position = glm::vec3( 3.0f, 3.0f, 5.0f );
-    m_Light.Intensity = 1.0f;
+    Light light;
 
-    std::vector<Light> lights = { m_Light };
+    light.Color = glm::vec3(1.0f, 0.95f, 0.8f);
+    light.Position = glm::vec3(3.0f, 3.0f, 5.0f);
+    light.Intensity = 1.0f;
+
+    m_Lights.push_back(light);
     m_CommandList->Reset(m_CommandAllocators[0]);
-    m_LightBuffer = StructuredBuffer::Create(u32(lights.size()), sizeof(Light), lights.data());
+    m_LightBuffer = StructuredBuffer::Create(u32(m_Lights.size()), sizeof(Light), m_Lights.data());
     m_CommandList->Close();
     u64 fence = m_CommandQueue->ExecuteCommandLists({ m_CommandList->Get().Get() });
     m_CommandQueue->WaitForFenceValue(fence);
@@ -176,28 +178,12 @@ void Renderer::Update()
 
 	float angle = float( totalTime * 45.0f );
 
-    glm::mat4 modelMatrix = 
-        glm::rotate( 
-            glm::mat4( 1.0f ), glm::radians( angle ), glm::vec3( 1.0f, 1.0f, 1.0f ) 
-        );
-
-    glm::vec3 eyePos = glm::vec3( 0.0f, 0.0f, 5.0f );
-    glm::vec3 focusPoint = glm::vec3( 0.0f, 0.0f, 0.0f );
-    glm::vec3 up = glm::vec3( 0.0f, 1.0f, 0.0f );
-    glm::mat4 view = glm::lookAtLH( eyePos, focusPoint, up );
-
-    glm::mat4 projection = glm::perspectiveFovLH(
-        glm::radians( 45.0f ), float( m_Width ), float( m_Height ), 0.1f, 100.0f
+    const glm::mat4& projection = m_Camera.GetProjection( 
+        float( m_Width ), float( m_Height ) 
     );
+    const glm::mat4& view = m_Camera.GetView();
 
-    m_MVPMatrix = projection * view * modelMatrix;
-
-    m_Constants.NormalMatrix = glm::transpose( glm::inverse( modelMatrix ) );
-    m_Constants.Model = modelMatrix;
-    m_Constants.MVP = m_MVPMatrix;
-    // m_Constants.lightInfo.LightToLightInfo(m_Light);
-
-    m_Model->Update(projection * view, eyePos);
+    m_Model->Update( projection * view, m_Camera.position );
 
     m_Interface->NewFrame();
     m_Interface->Update( float( deltaSeconds ) );
@@ -206,37 +192,37 @@ void Renderer::Update()
 void Renderer::Render()
 {
     u32 frameIndex = m_SwapChain->GetCurrentBackBufferIndex();
-    auto backBuffer = m_SwapChain->GetBackBuffer(frameIndex);
-    auto rtv = m_RTVDescriptorHeap->GetCPUHandle(frameIndex);
-    m_RenderTarget->SetRenderTargetView(rtv);
+    auto backBuffer = m_SwapChain->GetBackBuffer( frameIndex );
+    auto rtv = m_RTVDescriptorHeap->GetCPUHandle( frameIndex );
+    m_RenderTarget->SetRenderTargetView( rtv );
 
-    m_CommandList->Reset(m_CommandAllocators[frameIndex]);
+    m_CommandList->Reset( m_CommandAllocators[ frameIndex ] );
 
     auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
         backBuffer.Get(),
         D3D12_RESOURCE_STATE_PRESENT,
         D3D12_RESOURCE_STATE_RENDER_TARGET
     );
-    m_CommandList->Get()->ResourceBarrier(1u, &barrier);
+    m_CommandList->Get()->ResourceBarrier( 1u, &barrier );
 
-    m_CommandList->SetRenderTarget(*m_RenderTarget);
-    m_CommandList->ClearRenderTargetView(rtv, &m_ClearColor[0]);
-    auto dsv = m_DSVDescriptorHeap->GetCPUHandle(0u);
-    m_CommandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0u);
+    m_CommandList->SetRenderTarget( *m_RenderTarget );
+    m_CommandList->ClearRenderTargetView( rtv, &m_ClearColor[ 0 ] );
+    auto dsv = m_DSVDescriptorHeap->GetCPUHandle( 0u );
+    m_CommandList->ClearDepthStencilView( dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0u );
 
     m_CommandList->SetPipelineState(
-        std::shared_ptr<PipelineStateObject>(m_PipelineState.get(), [](auto*) {})
+        std::shared_ptr<PipelineStateObject>( m_PipelineState.get(), [](auto*) {} )
     );
     m_CommandList->SetGraphicsRootSignature(
-        std::shared_ptr<RootSignature>(m_RootSignature.get(), [](auto*) {})
+        std::shared_ptr<RootSignature>( m_RootSignature.get(), [](auto*) {} )
     );
 
     ID3D12DescriptorHeap* heaps[] = { m_SRVDescriptorHeap->Get().Get() };
-    m_CommandList->Get()->SetDescriptorHeaps(1u, heaps);
+    m_CommandList->Get()->SetDescriptorHeaps( 1u, heaps );
 
-    m_CommandList->SetViewport(m_Viewport);
-    m_CommandList->SetScissorRect(m_ScissorRect);
-    m_CommandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_CommandList->SetViewport( m_Viewport );
+    m_CommandList->SetScissorRect( m_ScissorRect );
+    m_CommandList->SetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
     // root index 0: model CBV (b0)
     m_CommandList->Get()->SetGraphicsRootDescriptorTable(
@@ -248,19 +234,19 @@ void Renderer::Render()
         2u, m_LightBuffer->GetGPUSRVHandle()
     );
 
-    for (const auto& mesh : m_Model->GetMeshes()) {
+    for ( const auto& mesh : m_Model->GetMeshes() ) {
         const auto& material = mesh->GetMaterial();
 
         // root index 1: textures t0-t3
-        if (material && material->Albedo) {
+        if ( material && material->Albedo ) {
             m_CommandList->Get()->SetGraphicsRootDescriptorTable(
                 1u, material->Albedo->GetGPUHandle()
             );
         }
 
-        m_CommandList->SetVertexBuffer(0u, *mesh->GetVertexBuffer());
-        m_CommandList->SetIndexBuffer(*mesh->GetIndexBuffer());
-        m_CommandList->DrawIndexed(u32(mesh->GetIndexCount()), 1u, 0u, 0u, 0u);
+        m_CommandList->SetVertexBuffer( 0u, *mesh->GetVertexBuffer() );
+        m_CommandList->SetIndexBuffer( *mesh->GetIndexBuffer() );
+        m_CommandList->DrawIndexed( u32( mesh->GetIndexCount() ), 1u, 0u, 0u, 0u );
     }
 
     m_Interface->Render();
@@ -270,18 +256,20 @@ void Renderer::Render()
         D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_PRESENT
     );
-    m_CommandList->Get()->ResourceBarrier(1, &barrier);
+    m_CommandList->Get()->ResourceBarrier( 1, &barrier );
 
     m_CommandList->Close();
-    u64 fenceValue = m_CommandQueue->ExecuteCommandLists({ m_CommandList->Get().Get() });
-    m_SwapChain->Present(true);
-    m_CommandQueue->WaitForFenceValue(fenceValue);
+    u64 fenceValue = m_CommandQueue->ExecuteCommandLists(
+        { m_CommandList->Get().Get() }
+    );
+    m_SwapChain->Present( true );
+    m_CommandQueue->WaitForFenceValue( fenceValue );
 }
 
 void Renderer::TrackUpload(ComPtr<ID3D12Resource> resource, 
     D3D12MA::Allocation* allocation)
 {
-    m_PendingUploads.push_back({ std::move(resource), allocation });
+    m_PendingUploads.push_back( { std::move(resource), allocation } );
 }
 
 ComPtr<IDXGIAdapter4> Renderer::D3D12Adapter() const noexcept
@@ -324,7 +312,9 @@ void Renderer::InitializeCommandAllocators()
 	for ( u32 i{ 0u }; i < m_NumBuffers; ++i ) {
 		log::ThrowIfFailed(
             m_Device->GetDevice()->CreateCommandAllocator(
-                D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_CommandAllocators[ i ] )
+                    D3D12_COMMAND_LIST_TYPE_DIRECT, 
+                    IID_PPV_ARGS( &m_CommandAllocators[ i ] 
+                )
             )
         );
 	}
@@ -438,22 +428,14 @@ void Renderer::CompileShaders()
 
 void Renderer::FlushUploads()
 {
-    for (auto& upload : m_PendingUploads)
+    for ( auto& upload : m_PendingUploads )
     {
-        if (upload.Allocation)
+        if ( upload.Allocation )
         {
             upload.Allocation->Release();
             upload.Allocation = nullptr;
         }
     }
-    m_PendingUploads.clear();
-}
 
-void Renderer::LightInfo::LightToLightInfo(const Light& light)
-{
-    Position  = light.Position;
-    Color     = light.Color;
-    Direction = light.Direction;
-    Intensity = light.Intensity;
-    Type      = static_cast<u32>( light.type );
+    m_PendingUploads.clear();
 }

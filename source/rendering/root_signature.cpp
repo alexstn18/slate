@@ -124,7 +124,7 @@ RootSignature& RootSignature::AddRootConstants(
     return *this;
 }
 
-RootSignature& slate::RootSignature::AddCBVs(u32 baseRegister, u32 count)
+RootSignature& RootSignature::AddCBVs(u32 baseRegister, u32 count)
 {
     D3D12_DESCRIPTOR_RANGE range = {};
     range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;

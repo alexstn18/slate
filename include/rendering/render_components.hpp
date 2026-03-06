@@ -3,6 +3,19 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
+#include <imgui/ImReflect.hpp>
+
+namespace ImReflect
+{
+	inline void tag_invoke(ImInput_t, const char* label, glm::vec3& v,
+		ImSettings& settings, ImResponse& response)
+	{
+		auto& r = response.get<glm::vec3>();
+		if (ImGui::DragFloat3(label, &v.x, 0.05f)) r.changed();
+		ImReflect::Detail::check_input_states(r);
+	}
+}
+
 namespace slate {
 	class Texture;
 
@@ -88,7 +101,7 @@ namespace slate {
 		glm::vec3 position{ 0.f, 0.f, 5.f };
 		float yaw{ 0.f };     // radians
 		float pitch{ 0.f };   // radians
-		float fovY{ glm::radians(60.f) };
+		float fovY{ glm::radians(45.f) };
 		float nearZ{ 0.1f };
 		float farZ{ 1000.f };
 
@@ -101,8 +114,8 @@ namespace slate {
 			return glm::lookAtLH(position, position + fwd, { 0,1,0 });
 		}
 
-		glm::mat4 GetProjection(float aspectRatio) const {
-			return glm::perspectiveLH(fovY, aspectRatio, nearZ, farZ);
+		glm::mat4 GetProjection(float width, float height) const {
+			return glm::perspectiveFovLH(fovY, width, height, nearZ, farZ);
 		}
 	};
 
@@ -114,3 +127,6 @@ namespace slate {
 		u32 LightCount = 1u;
 	};
 }
+
+IMGUI_REFLECT(slate::Light, Intensity, Position, Range, Direction)
+IMGUI_REFLECT(slate::Camera, position)

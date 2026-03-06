@@ -55,6 +55,9 @@ namespace slate {
 		[[nodiscard]] u32 GetFrameCount() const noexcept { return m_NumBuffers; }
 
 		[[nodiscard]] const std::vector<ComPtr<ID3D12CommandAllocator>>& GetCommandAllocators() const noexcept { return m_CommandAllocators; }
+		[[nodiscard]] std::vector<Light>& GetLights() noexcept { return m_Lights; }
+		[[nodiscard]] Camera& GetCamera() noexcept { return m_Camera; }
+		[[nodiscard]] Model& GetModel() noexcept { return *m_Model; }
 	private:
 		struct PendingUpload {
 			ComPtr<ID3D12Resource> Resource;
@@ -99,27 +102,9 @@ namespace slate {
 		static inline constexpr u32 m_NumBuffers{ 3u };
 
 		glm::vec4 m_ClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
-		glm::mat4 m_MVPMatrix{};
 
-		struct LightInfo {
-			glm::vec3 Position;
-			float _pad0;
-			glm::vec3 Color;
-			float _pad1;
-			glm::vec3 Direction;
-			float Intensity;
-			u32 Type;
-			float _pad2[3];
-			void LightToLightInfo(const Light& light);
-		};
-
-		struct Constants {
-			glm::mat4 NormalMatrix;
-			glm::mat4 Model;
-			glm::mat4 MVP;
-		}m_Constants;
-
-		Light m_Light;
+		Camera m_Camera;
+		std::vector<Light> m_Lights;
 	};
 }
 

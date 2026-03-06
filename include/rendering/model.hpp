@@ -23,7 +23,7 @@ namespace slate {
 
 		[[nodiscard]] const std::vector<std::shared_ptr<Mesh>>& GetMeshes() const noexcept { return m_Meshes; }
 		[[nodiscard]] const ConstantBuffer* GetConstantBuffer() const noexcept { return m_ConstantBuffer.get(); }
-
+		[[nodiscard]] Transform& GetTransform() noexcept { return m_Transform; }
 	private:
 		std::vector<std::shared_ptr<Mesh>> m_Meshes{};
 
