@@ -28,7 +28,23 @@ namespace slate {
 		glm::vec4 albedoFactor{ 1.0f };
 		float metallicFactor{ 1.0f };
 		float roughnessFactor{ 1.0f };
-		glm::vec3 emissiveFactor{ 0.0f };
+		glm::vec3 emissiveFactor{ 1.0f };
+	};
+
+	struct LightweightMaterial {
+		glm::vec4 albedoFactor{ 1.0f };
+		glm::vec3 emissiveFactor{ 1.0f };
+		float metallicFactor{ 1.0f };
+		float roughnessFactor{ 1.0f };
+
+		static LightweightMaterial AsLightweight(const Material& m) {
+			LightweightMaterial l;
+			l.albedoFactor = m.albedoFactor;
+			l.emissiveFactor = m.emissiveFactor;
+			l.metallicFactor = m.metallicFactor;
+			l.roughnessFactor = m.roughnessFactor;
+			return l;
+		}
 	};
 
 	struct Light {
@@ -41,6 +57,8 @@ namespace slate {
 			Directional = 0u,
 			Point,
 		} type = Type::Directional;
+		float SpecularGlossiness{ 0.25f };
+		float AmbientIntensity{ 0.05f };
 	};
 
 	struct Transform {
@@ -124,9 +142,22 @@ namespace slate {
 		glm::mat4 Model{};
 		glm::mat4 MVP{};
 		glm::vec3 cameraPos{};
-		u32 LightCount = 1u;
+		float _pad;
+	};
+
+	struct GeneralData {
+		u32 LightCount;
+		enum class Tonemap : u32 {
+			Reinhard = 0u,
+			Filmic,
+			Aces,
+		} TonemapType = Tonemap::Filmic;
+
+		float GammaCorrection{ 2.2f };
+		float Exposure{ 1.0f };
 	};
 }
 
-IMGUI_REFLECT(slate::Light, Intensity, Position, Range, Direction)
+IMGUI_REFLECT(slate::Light, Intensity, Position, Range, Direction, SpecularGlossiness, AmbientIntensity)
 IMGUI_REFLECT(slate::Camera, position)
+IMGUI_REFLECT(slate::GeneralData, TonemapType, GammaCorrection, Exposure)

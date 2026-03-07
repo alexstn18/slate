@@ -19,6 +19,7 @@ namespace slate {
 	class Model;
 	class Interface;
 	class StructuredBuffer;
+	class ConstantBuffer;
 
 	class Renderer {
 	public:
@@ -32,6 +33,9 @@ namespace slate {
 
 		void TrackUpload(ComPtr<ID3D12Resource> resource, D3D12MA::Allocation* allocation = nullptr);
 		void FlushUploads();
+		
+		void UpdateGeneralBuffer();
+		
 		[[nodiscard]] u32 IncrementTextureCount() noexcept { return m_NextSRVIndex++; }
 
 		[[nodiscard]] Adapter& GetAdapter() const noexcept { return *m_Adapter; }
@@ -58,6 +62,7 @@ namespace slate {
 		[[nodiscard]] std::vector<Light>& GetLights() noexcept { return m_Lights; }
 		[[nodiscard]] StructuredBuffer& GetLightBuffer() const noexcept { return *m_LightBuffer; }
 		[[nodiscard]] Camera& GetCamera() noexcept { return m_Camera; }
+		[[nodiscard]] GeneralData& GetGeneralData() noexcept { return m_GeneralData; }
 		[[nodiscard]] Model& GetModel() noexcept { return *m_Model; }
 	private:
 		struct PendingUpload {
@@ -106,6 +111,10 @@ namespace slate {
 
 		Camera m_Camera;
 		std::vector<Light> m_Lights;
+
+		//
+		GeneralData m_GeneralData{};
+		std::unique_ptr<ConstantBuffer> m_GeneralDataCBV{ nullptr };
 	};
 }
 

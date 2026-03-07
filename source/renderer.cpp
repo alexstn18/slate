@@ -57,6 +57,7 @@ Renderer::~Renderer()
     m_CommandList.reset();
     m_Model.reset();
     m_LightBuffer.reset();
+    m_GeneralDataCBV.reset();
     m_CommandList.reset();
 
     if ( m_DepthStencilAllocation ) {
@@ -144,6 +145,12 @@ bool Renderer::Initialize()
     light.Intensity = 1.0f;
 
     m_Lights.push_back( light );
+    
+    m_GeneralData.LightCount = static_cast<u32>( m_Lights.size() );
+
+    m_GeneralDataCBV = ConstantBuffer::Create( sizeof( GeneralData ) );
+    m_GeneralDataCBV->SetData( &m_GeneralData, sizeof( GeneralData ) );
+
     m_CommandList->Reset( m_CommandAllocators[ 0 ] );
     m_LightBuffer = StructuredBuffer::Create( 
         static_cast<u32>( m_Lights.size() ), sizeof( Light ), m_Lights.data()
@@ -198,63 +205,72 @@ void Renderer::Update()
 void Renderer::Render()
 {
     u32 frameIndex{ m_SwapChain->GetCurrentBackBufferIndex() };
-    auto backBuffer{ m_SwapChain->GetBackBuffer( frameIndex ) };
-    auto rtv{ m_RTVDescriptorHeap->GetCPUHandle( frameIndex ) };
-    m_RenderTarget->SetRenderTargetView( rtv );
-
-    m_CommandList->Reset( m_CommandAllocators[ frameIndex ] );
+    auto backBuffer{ m_SwapChain->GetBackBuffer(frameIndex) };
+    auto rtv{ m_RTVDescriptorHeap->GetCPUHandle(frameIndex) };
+    m_RenderTarget->SetRenderTargetView(rtv);
+    m_CommandList->Reset(m_CommandAllocators[frameIndex]);
 
     auto barrier{ CD3DX12_RESOURCE_BARRIER::Transition(
         backBuffer.Get(),
         D3D12_RESOURCE_STATE_PRESENT,
         D3D12_RESOURCE_STATE_RENDER_TARGET
     ) };
-    m_CommandList->Get()->ResourceBarrier( 1u, &barrier );
+    m_CommandList->Get()->ResourceBarrier(1u, &barrier);
 
-    m_CommandList->SetRenderTarget( *m_RenderTarget );
-    m_CommandList->ClearRenderTargetView( rtv, &m_ClearColor[ 0 ] );
-    auto dsv{ m_DSVDescriptorHeap->GetCPUHandle( 0u ) };
-    m_CommandList->ClearDepthStencilView( dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0u );
+    m_CommandList->SetRenderTarget(*m_RenderTarget);
+    m_CommandList->ClearRenderTargetView(rtv, &m_ClearColor[0]);
+    auto dsv{ m_DSVDescriptorHeap->GetCPUHandle(0u) };
+    m_CommandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0u);
 
     m_CommandList->SetPipelineState(
-        std::shared_ptr<PipelineStateObject>( m_PipelineState.get(), [](auto*) {} )
+        std::shared_ptr<PipelineStateObject>(m_PipelineState.get(), [](auto*) {})
     );
     m_CommandList->SetGraphicsRootSignature(
-        std::shared_ptr<RootSignature>( m_RootSignature.get(), [](auto*) {} )
+        std::shared_ptr<RootSignature>(m_RootSignature.get(), [](auto*) {})
     );
 
     ID3D12DescriptorHeap* heaps[] = { m_SRVDescriptorHeap->Get().Get() };
-    m_CommandList->Get()->SetDescriptorHeaps( 1u, heaps );
+    m_CommandList->Get()->SetDescriptorHeaps(1u, heaps);
 
-    m_CommandList->SetViewport( m_Viewport );
-    m_CommandList->SetScissorRect( m_ScissorRect );
-    m_CommandList->SetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+    m_CommandList->SetViewport(m_Viewport);
+    m_CommandList->SetScissorRect(m_ScissorRect);
+    m_CommandList->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // root index 0: model CBV (b0)
+    // root index 0: b0 ModelConstants
     m_CommandList->Get()->SetGraphicsRootDescriptorTable(
         0u, m_Model->GetConstantBuffer()->GetGPUHandle()
     );
-
-    // root index 2: light structured buffer (t4)
+    // root index 1: b1 GeneralData
     m_CommandList->Get()->SetGraphicsRootDescriptorTable(
-        2u, m_LightBuffer->GetGPUSRVHandle()
+        1u, m_GeneralDataCBV->GetGPUHandle()
+    );
+    // root index 3: t4 lights
+    m_CommandList->Get()->SetGraphicsRootDescriptorTable(
+        3u, m_LightBuffer->GetGPUSRVHandle()
     );
 
-    for ( const auto& mesh : m_Model->GetMeshes() ) {
+    for (const auto& mesh : m_Model->GetMeshes()) {
         const auto& material{ mesh->GetMaterial() };
 
-        // root index 1: textures t0-t3
-        if ( material && material->Albedo ) {
+        // root index 2: t0-t3 textures
+        if (material && material->Albedo) {
             m_CommandList->Get()->SetGraphicsRootDescriptorTable(
-                1u, material->Albedo->GetGPUHandle()
+                2u, material->Albedo->GetGPUHandle()
             );
         }
 
-        m_CommandList->SetVertexBuffer( 0u, *mesh->GetVertexBuffer() );
-        m_CommandList->SetIndexBuffer( *mesh->GetIndexBuffer() );
-        m_CommandList->DrawIndexed( 
-            static_cast<u32>( mesh->GetIndexCount() ), 
-            1u, 0u, 0u, 0u 
+        // root index 4: b2 Material CBV
+        if (mesh->GetMaterialConstantBuffer()) {
+            m_CommandList->Get()->SetGraphicsRootDescriptorTable(
+                4u, mesh->GetMaterialConstantBuffer()->GetGPUHandle()
+            );
+        }
+
+        m_CommandList->SetVertexBuffer(0u, *mesh->GetVertexBuffer());
+        m_CommandList->SetIndexBuffer(*mesh->GetIndexBuffer());
+        m_CommandList->DrawIndexed(
+            static_cast<u32>(mesh->GetIndexCount()),
+            1u, 0u, 0u, 0u
         );
     }
 
@@ -265,14 +281,14 @@ void Renderer::Render()
         D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_PRESENT
     );
-    m_CommandList->Get()->ResourceBarrier( 1, &barrier );
+    m_CommandList->Get()->ResourceBarrier(1, &barrier);
 
     m_CommandList->Close();
     u64 fenceValue{ m_CommandQueue->ExecuteCommandLists(
         { m_CommandList->Get().Get() }
     ) };
-    m_SwapChain->Present( true );
-    m_CommandQueue->WaitForFenceValue( fenceValue );
+    m_SwapChain->Present(true);
+    m_CommandQueue->WaitForFenceValue(fenceValue);
 }
 
 void Renderer::TrackUpload(ComPtr<ID3D12Resource> resource, 
@@ -389,10 +405,12 @@ void Renderer::CreateDepthStencil()
 void Renderer::CreateRootSignature()
 {
     m_RootSignature
-        ->AddDescriptorTable().AddCBVs( 0u, 1u )   // b0 cbv
-        .AddDescriptorTable().AddSRVs( 0u, 4u )    // t0-t3 textures  
-        .AddDescriptorTable().AddSRVs( 4u, 1u )    // t4 lights
-        .AddStaticSampler( 0u );
+        ->AddDescriptorTable().AddCBVs(0u, 1u)   // b0 ModelConstants
+        .AddDescriptorTable().AddCBVs(1u, 1u)    // b1 GeneralData
+        .AddDescriptorTable().AddSRVs(0u, 4u)    // t0-t3 textures
+        .AddDescriptorTable().AddSRVs(4u, 1u)    // t4 lights
+        .AddDescriptorTable().AddCBVs(2u, 1u)    // b2 Material
+        .AddStaticSampler(0u);
     m_RootSignature->Initialize();
 }
 
@@ -447,4 +465,9 @@ void Renderer::FlushUploads()
     }
 
     m_PendingUploads.clear();
+}
+
+void Renderer::UpdateGeneralBuffer()
+{
+    m_GeneralDataCBV->SetData(&m_GeneralData, sizeof(GeneralData));
 }

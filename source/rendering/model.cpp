@@ -196,6 +196,7 @@ Model::Model(const std::filesystem::path& filePath)
 	log::Info( "Processed {} meshes total", m_Meshes.size() );
 
 	m_ConstantBuffer = ConstantBuffer::Create( sizeof( ModelConstants ) );
+	m_ConstantBuffer->SetData( &m_ModelConstants, sizeof( ModelConstants ) );
 }
 
 std::shared_ptr<Model> Model::Load(const std::filesystem::path& path, 
@@ -235,7 +236,6 @@ void Model::Update(const glm::mat4& VP, const glm::vec3& cameraPos)
 	m_ModelConstants.Model = modelMatrix;
 	m_ModelConstants.MVP = VP * modelMatrix;
 	m_ModelConstants.cameraPos = cameraPos;
-	m_ModelConstants.LightCount = static_cast<u32>( App.Renderer().GetLights().size() );
 
 	m_ConstantBuffer->SetData( &m_ModelConstants, sizeof( ModelConstants ) );
 }

@@ -2,6 +2,7 @@
 #include "rendering/mesh.hpp"
 #include "rendering/vertex_buffer.hpp"
 #include "rendering/index_buffer.hpp"
+#include "rendering/constant_buffer.hpp"
 #include "rendering/command_list.hpp"
 #include "rendering/command_queue.hpp"
 
@@ -14,6 +15,10 @@ Mesh::Mesh(const std::vector<Vertex>& vertices,
     , m_Indices( indices.data(), indices.data() + indices.size() )
     , m_Material( std::make_shared<Material>( material ) )
 {
+    auto l = LightweightMaterial::AsLightweight( material );
+
+    m_MaterialCBV = ConstantBuffer::Create( sizeof( LightweightMaterial ) );
+    m_MaterialCBV->SetData( &l, sizeof( LightweightMaterial ) );
 }
 
 // constructor for when there's no material linked to the mesh

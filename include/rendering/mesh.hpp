@@ -4,6 +4,7 @@
 namespace slate {
 	class VertexBuffer;
 	class IndexBuffer;
+	class ConstantBuffer;
 
 	struct Vertex {
 		glm::vec3 position;
@@ -27,6 +28,7 @@ namespace slate {
 		[[nodiscard]] std::shared_ptr<VertexBuffer> GetVertexBuffer() const noexcept { return m_VertexBuffer; }
 		[[nodiscard]] std::shared_ptr<IndexBuffer> GetIndexBuffer() const noexcept { return m_IndexBuffer; }
 		[[nodiscard]] std::shared_ptr<Material> GetMaterial() const noexcept { return m_Material; }
+		[[nodiscard]] const ConstantBuffer* GetMaterialConstantBuffer() const noexcept { return m_MaterialCBV.get(); }
 
 		[[nodiscard]] size_t GetVertexCount() const noexcept { return m_Vertices.size(); }
 		[[nodiscard]] size_t GetIndexCount() const noexcept { return m_Indices.size(); }
@@ -37,5 +39,6 @@ namespace slate {
 		std::shared_ptr<VertexBuffer> m_VertexBuffer{ nullptr };
 		std::shared_ptr<IndexBuffer> m_IndexBuffer{ nullptr };
 		std::shared_ptr<Material> m_Material{ nullptr };
+		std::unique_ptr<ConstantBuffer> m_MaterialCBV{ nullptr };
 	};
 }

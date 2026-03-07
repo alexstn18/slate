@@ -73,6 +73,7 @@ void Interface::Update(float)
 	if (io.DisplaySize.x <= 0 || io.DisplaySize.y <= 0) return;
 	ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 	auto& cam = App.Renderer().GetCamera();
+	auto& general = App.Renderer().GetGeneralData();
 	const glm::mat4& view = cam.GetView();
 	const glm::mat4& proj = cam.GetProjection(io.DisplaySize.x, io.DisplaySize.y);
 
@@ -99,6 +100,11 @@ void Interface::Update(float)
 		ImGui::SliderAngle("yaw", &cam.yaw, -180.f, 180.f);
 		ImGui::SliderAngle("pitch", &cam.pitch, -89.f, 89.f);
 		ImGui::SliderAngle("fovY", &cam.fovY, 10.f, 170.f);
+
+		auto generalResponse = ImReflect::Input("General", general);
+		if (generalResponse.get<GeneralData>().is_changed()) {
+			App.Renderer().UpdateGeneralBuffer();
+		}
 
 		for (auto& light : App.Renderer().GetLights()) {
 			auto response = ImReflect::Input("Light", light);
