@@ -59,20 +59,20 @@ Renderer::~Renderer()
     m_LightBuffer.reset();
     m_CommandList.reset();
 
-    if (m_DepthStencilAllocation) {
+    if ( m_DepthStencilAllocation ) {
         m_DepthStencilAllocation->Release();
         m_DepthStencilAllocation = nullptr;
     }
     m_DepthStencilBuffer.Reset();
 
     D3D12MA::TotalStatistics stats = {};
-    m_Allocator->CalculateStatistics(&stats);
+    m_Allocator->CalculateStatistics( &stats );
 
-    log::Info("D3D12MA: {} allocations still alive ({} bytes)",
+    log::Info( "D3D12MA: {} allocations still alive ({} bytes)",
         stats.Total.Stats.AllocationCount,
         stats.Total.Stats.AllocationBytes);
 
-    if (m_Allocator) {
+    if ( m_Allocator ) {
         m_Allocator->Release();
         m_Allocator = nullptr;
     }
@@ -80,7 +80,7 @@ Renderer::~Renderer()
 
 bool Renderer::Initialize()
 {
-	HWND hWnd = App.Window().GetHandle();
+    HWND hWnd{ App.Window().GetHandle() };
 
 	EnableDebugLayer();
     m_Adapter->Initialize( false );  // Adapter created here
@@ -104,7 +104,7 @@ bool Renderer::Initialize()
         HeapType::RTV, 
         device->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_RTV )
     );
-    static constexpr u32 MAX_TEXTURES = 1024u;
+    static constexpr u32 MAX_TEXTURES{ 1024u };
 	m_SRVDescriptorHeap->Initialize( HeapType::SRV, MAX_TEXTURES );
 	InitializeCommandAllocators();
     m_CommandList = std::make_shared<CommandList>();
@@ -112,38 +112,45 @@ bool Renderer::Initialize()
 	UpdateRenderTargetViews();
 	CreateDepthStencil();
 
-	m_Viewport = CD3DX12_VIEWPORT( 0.0f, 0.0f, float( m_Width ), float( m_Height ) );
-	m_ScissorRect = CD3DX12_RECT( 0, 0, LONG( m_Width ), LONG( m_Height ) );
+	m_Viewport = CD3DX12_VIEWPORT( 
+        0.0f, 0.0f, static_cast<float>( m_Width ), static_cast<float>( m_Height )
+    );
+	m_ScissorRect = CD3DX12_RECT( 
+        0, 0, static_cast<LONG>( m_Width ), static_cast<LONG>( m_Height ) 
+    );
 
     log::Info( "Viewport: {}x{}", m_Viewport.Width, m_Viewport.Height );
     log::Info( "Scissor: {}x{}", m_ScissorRect.right, m_ScissorRect.bottom );
 
     m_Model = Model::Load(
-        "assets/models/DamagedHelmet.glb", *m_CommandList, *m_CommandQueue, m_CommandAllocators[ 0 ]
+        "assets/models/DamagedHelmet.glb", 
+        *m_CommandList, *m_CommandQueue, m_CommandAllocators[ 0 ]
     );
 	CreateRootSignature();
 	CompileShaders();
 
 	// Setup render target
-	auto rtv = m_RTVDescriptorHeap->GetCPUHandle( 0u );
-	auto dsv = m_DSVDescriptorHeap->GetCPUHandle( 0u );
+    auto rtv{ m_RTVDescriptorHeap->GetCPUHandle( 0u ) };
+    auto dsv{ m_DSVDescriptorHeap->GetCPUHandle( 0u ) };
 	m_RenderTarget->SetRenderTargetView( rtv );
 	m_RenderTarget->SetDepthStencilView( dsv );
 
     m_Interface->Initialize();
 
-    Light light;
+    Light light{};
 
-    light.Color = glm::vec3(1.0f, 0.95f, 0.8f);
-    light.Position = glm::vec3(3.0f, 3.0f, 5.0f);
+    light.Color = glm::vec3( 1.0f, 0.95f, 0.8f );
+    light.Position = glm::vec3( 3.0f, 3.0f, 5.0f );
     light.Intensity = 1.0f;
 
-    m_Lights.push_back(light);
-    m_CommandList->Reset(m_CommandAllocators[0]);
-    m_LightBuffer = StructuredBuffer::Create(u32(m_Lights.size()), sizeof(Light), m_Lights.data());
+    m_Lights.push_back( light );
+    m_CommandList->Reset( m_CommandAllocators[ 0 ] );
+    m_LightBuffer = StructuredBuffer::Create( 
+        static_cast<u32>( m_Lights.size() ), sizeof( Light ), m_Lights.data()
+    );
     m_CommandList->Close();
-    u64 fence = m_CommandQueue->ExecuteCommandLists({ m_CommandList->Get().Get() });
-    m_CommandQueue->WaitForFenceValue(fence);
+    u64 fence{ m_CommandQueue->ExecuteCommandLists( { m_CommandList->Get().Get() } ) };
+    m_CommandQueue->WaitForFenceValue( fence );
     FlushUploads();
 
 	return true;
@@ -156,18 +163,18 @@ void Renderer::Shutdown()
 
 void Renderer::Update()
 {
-	static uint64_t frameCounter = 0ull;
-	static double elapsedSeconds = 0.0;
-	static double totalTime = 0.0;
-	static std::chrono::high_resolution_clock clock;
-	static auto t0 = clock.now();
+    static uint64_t frameCounter{ 0ull };
+    static double elapsedSeconds{ 0.0 };
+    static double totalTime{ 0.0 };
+    static std::chrono::high_resolution_clock clock{};
+    static auto t0{ clock.now() };
 
 	frameCounter++;
-	auto t1 = clock.now();
-	auto deltaTime = t1 - t0;
+    auto t1{ clock.now() };
+    auto deltaTime{ t1 - t0 };
 	t0 = t1;
 
-	double deltaSeconds = deltaTime.count() * 1e-9;
+    double deltaSeconds{ deltaTime.count() * 1e-9 };
 	elapsedSeconds += deltaSeconds;
 	totalTime += deltaSeconds;
 
@@ -176,38 +183,37 @@ void Renderer::Update()
 		elapsedSeconds -= 1.0;
 	}
 
-	float angle = float( totalTime * 45.0f );
+    const glm::mat4& projection{ m_Camera.GetProjection(
+        static_cast<float>( m_Width ), static_cast<float>( m_Height )
+    ) };
 
-    const glm::mat4& projection = m_Camera.GetProjection( 
-        float( m_Width ), float( m_Height ) 
-    );
-    const glm::mat4& view = m_Camera.GetView();
+    const glm::mat4& view{ m_Camera.GetView() };
 
     m_Model->Update( projection * view, m_Camera.position );
 
     m_Interface->NewFrame();
-    m_Interface->Update( float( deltaSeconds ) );
+    m_Interface->Update( static_cast<float>( deltaSeconds ) );
 }
 
 void Renderer::Render()
 {
-    u32 frameIndex = m_SwapChain->GetCurrentBackBufferIndex();
-    auto backBuffer = m_SwapChain->GetBackBuffer( frameIndex );
-    auto rtv = m_RTVDescriptorHeap->GetCPUHandle( frameIndex );
+    u32 frameIndex{ m_SwapChain->GetCurrentBackBufferIndex() };
+    auto backBuffer{ m_SwapChain->GetBackBuffer( frameIndex ) };
+    auto rtv{ m_RTVDescriptorHeap->GetCPUHandle( frameIndex ) };
     m_RenderTarget->SetRenderTargetView( rtv );
 
     m_CommandList->Reset( m_CommandAllocators[ frameIndex ] );
 
-    auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+    auto barrier{ CD3DX12_RESOURCE_BARRIER::Transition(
         backBuffer.Get(),
         D3D12_RESOURCE_STATE_PRESENT,
         D3D12_RESOURCE_STATE_RENDER_TARGET
-    );
+    ) };
     m_CommandList->Get()->ResourceBarrier( 1u, &barrier );
 
     m_CommandList->SetRenderTarget( *m_RenderTarget );
     m_CommandList->ClearRenderTargetView( rtv, &m_ClearColor[ 0 ] );
-    auto dsv = m_DSVDescriptorHeap->GetCPUHandle( 0u );
+    auto dsv{ m_DSVDescriptorHeap->GetCPUHandle( 0u ) };
     m_CommandList->ClearDepthStencilView( dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0u );
 
     m_CommandList->SetPipelineState(
@@ -235,7 +241,7 @@ void Renderer::Render()
     );
 
     for ( const auto& mesh : m_Model->GetMeshes() ) {
-        const auto& material = mesh->GetMaterial();
+        const auto& material{ mesh->GetMaterial() };
 
         // root index 1: textures t0-t3
         if ( material && material->Albedo ) {
@@ -246,7 +252,10 @@ void Renderer::Render()
 
         m_CommandList->SetVertexBuffer( 0u, *mesh->GetVertexBuffer() );
         m_CommandList->SetIndexBuffer( *mesh->GetIndexBuffer() );
-        m_CommandList->DrawIndexed( u32( mesh->GetIndexCount() ), 1u, 0u, 0u, 0u );
+        m_CommandList->DrawIndexed( 
+            static_cast<u32>( mesh->GetIndexCount() ), 
+            1u, 0u, 0u, 0u 
+        );
     }
 
     m_Interface->Render();
@@ -259,9 +268,9 @@ void Renderer::Render()
     m_CommandList->Get()->ResourceBarrier( 1, &barrier );
 
     m_CommandList->Close();
-    u64 fenceValue = m_CommandQueue->ExecuteCommandLists(
+    u64 fenceValue{ m_CommandQueue->ExecuteCommandLists(
         { m_CommandList->Get().Get() }
-    );
+    ) };
     m_SwapChain->Present( true );
     m_CommandQueue->WaitForFenceValue( fenceValue );
 }
@@ -322,12 +331,12 @@ void Renderer::InitializeCommandAllocators()
 
 void Renderer::UpdateRenderTargetViews()
 {
-    auto device = m_Device->GetDevice();
+    auto device{ m_Device->GetDevice() };
 
     for ( u32 i{ 0u }; i < m_NumBuffers; ++i )
     {
-        ComPtr<ID3D12Resource> backBuffer = m_SwapChain->GetBackBuffer( i );
-        auto rtv = m_RTVDescriptorHeap->GetCPUHandle( i );
+        ComPtr<ID3D12Resource> backBuffer{ m_SwapChain->GetBackBuffer( i ) };
+        auto rtv{ m_RTVDescriptorHeap->GetCPUHandle( i ) };
         device->CreateRenderTargetView( backBuffer.Get(), nullptr, rtv );
 
         ResourceStateTracker::AddGlobalResourceState(
@@ -338,17 +347,17 @@ void Renderer::UpdateRenderTargetViews()
 
 void Renderer::CreateDepthStencil()
 {
-    auto device = m_Device->GetDevice();
+    auto device{ m_Device->GetDevice() };
 
     D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
     depthOptimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
     depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
     depthOptimizedClearValue.DepthStencil.Stencil = 0;
 
-    CD3DX12_RESOURCE_DESC depthDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+    CD3DX12_RESOURCE_DESC depthDesc{ CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_D32_FLOAT, m_Width, m_Height,
         1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL
-    );
+    ) };
 
     D3D12MA::ALLOCATION_DESC allocDesc = {};
     allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
@@ -369,7 +378,7 @@ void Renderer::CreateDepthStencil()
     dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
     dsv.Flags = D3D12_DSV_FLAG_NONE;
 
-    auto dsvHandle = m_DSVDescriptorHeap->GetCPUHandle( 0u );
+    auto dsvHandle{ m_DSVDescriptorHeap->GetCPUHandle( 0u ) };
     device->CreateDepthStencilView( m_DepthStencilBuffer.Get(), &dsv, dsvHandle );
 
     ResourceStateTracker::AddGlobalResourceState(
@@ -380,19 +389,19 @@ void Renderer::CreateDepthStencil()
 void Renderer::CreateRootSignature()
 {
     m_RootSignature
-        ->AddDescriptorTable().AddCBVs(0u, 1u)   // b0 cbv
-        .AddDescriptorTable().AddSRVs(0u, 4u)    // t0-t3 textures  
-        .AddDescriptorTable().AddSRVs(4u, 1u)    // t4 lights
-        .AddStaticSampler(0u);
+        ->AddDescriptorTable().AddCBVs( 0u, 1u )   // b0 cbv
+        .AddDescriptorTable().AddSRVs( 0u, 4u )    // t0-t3 textures  
+        .AddDescriptorTable().AddSRVs( 4u, 1u )    // t4 lights
+        .AddStaticSampler( 0u );
     m_RootSignature->Initialize();
 }
 
 void Renderer::CompileShaders()
 {
-    auto device = m_Device->GetDevice();
+    auto device{ m_Device->GetDevice() };
 
-    ComPtr<ID3DBlob> vertexShader;
-    ComPtr<ID3DBlob> pixelShader;
+    ComPtr<ID3DBlob> vertexShader{ nullptr };
+    ComPtr<ID3DBlob> pixelShader{ nullptr };
 
     log::ThrowIfFailed( D3DCompileFromFile( L"assets/shaders/phong.hlsl", nullptr, nullptr,
         "VSMain", "vs_5_0", 0, 0, &vertexShader, nullptr ) );

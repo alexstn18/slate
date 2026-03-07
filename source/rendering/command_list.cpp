@@ -415,7 +415,7 @@ void CommandList::SetViewports(const std::vector<D3D12_VIEWPORT>& viewports)
 {
 	assert( viewports.size() < D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE );
 	m_CommandList->RSSetViewports(
-		static_cast<UINT>(viewports.size()), viewports.data()
+		static_cast<UINT>( viewports.size() ), viewports.data()
 	);
 }
 
@@ -524,11 +524,13 @@ void CommandList::UploadBufferData(Buffer& buffer, const void* data, size_t size
 		buffer.D3D12Resource().Get(), 0ull, uploadBuffer.Get(), 0ull, sizeInBytes
 	);
 
-	TransitionBarrier(buffer.D3D12Resource(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	TransitionBarrier( buffer.D3D12Resource(), 
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+	);
 	FlushResourceBarriers();
 
 	// Track upload buffer so it stays alive until GPU finishes
-	m_TrackedAllocations.push_back(uploadAllocation);
+	m_TrackedAllocations.push_back( uploadAllocation );
 	TrackObject( uploadBuffer );
 	TrackResource( buffer );
 }

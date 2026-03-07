@@ -178,10 +178,11 @@ Model::Model(const std::filesystem::path& filePath)
 		aiPrimitiveType_POINT | aiPrimitiveType_LINE
 	);
 
-	u32 preprocessFlags = 
+	u32 preprocessFlags = static_cast<u32>(
 		aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
 		aiProcessPreset_TargetRealtime_MaxQuality | aiProcess_OptimizeGraph |
-		aiProcess_ConvertToLeftHanded | aiProcess_GenBoundingBoxes;
+		aiProcess_ConvertToLeftHanded | aiProcess_GenBoundingBoxes 
+	);
 
 	const aiScene* scene = importer.ReadFile( filePath.string(), preprocessFlags );
 	
@@ -234,7 +235,7 @@ void Model::Update(const glm::mat4& VP, const glm::vec3& cameraPos)
 	m_ModelConstants.Model = modelMatrix;
 	m_ModelConstants.MVP = VP * modelMatrix;
 	m_ModelConstants.cameraPos = cameraPos;
-	m_ModelConstants.LightCount = 1u;
+	m_ModelConstants.LightCount = static_cast<u32>( App.Renderer().GetLights().size() );
 
 	m_ConstantBuffer->SetData( &m_ModelConstants, sizeof( ModelConstants ) );
 }
