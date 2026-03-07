@@ -94,7 +94,7 @@ float3 ComputeTBNNormal(PSInput input)
         T.y, B.y, Nv.y,
         T.z, B.z, Nv.z
     };
-
+    
     // unpack normals from [0, 1] back to [-1, 1]
     float3 tangentNormal = normalTexture.Sample(linearSampler, input.TexCoord).rgb * 2.0f - 1.0f;
     return normalize(mul(TBN, tangentNormal));

@@ -9,6 +9,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 
+#include "DirectXTex.h"
+
 using namespace slate;
 
 // C/C++ does not have a finally block for exception handling
@@ -85,7 +87,29 @@ void Texture::Initialize(
     auto commandList = App.Renderer().D3D12CommandList();
     auto& allocator = App.Renderer().D3D12MA_Allocator();
 
-    m_ResourceDesc.MipLevels = 1;
+    DirectX::Image image{};
+    DirectX::ScratchImage mipChain{};
+
+    image.width = width;
+    image.height = height;
+    image.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    image.rowPitch = width * 4;
+    image.slicePitch = width * height * 4;
+    image.pixels = reinterpret_cast<uint8_t*>( textureBuffer );
+
+    log::ThrowIfFailed(
+        DirectX::GenerateMipMaps(
+            image,
+            DirectX::TEX_FILTER_DEFAULT,
+            0, // 0 = full mipchain
+            mipChain
+        )
+    );
+
+    const DirectX::TexMetadata& metadata{ mipChain.GetMetadata() };
+    UINT mipLevels{ static_cast<UINT>( metadata.mipLevels ) };
+
+    m_ResourceDesc.MipLevels = static_cast<UINT16>( mipLevels );
     // @TODO: add function for DXGI_FORMAT checking
     m_ResourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     m_ResourceDesc.Width = width;
@@ -108,17 +132,24 @@ void Texture::Initialize(
         )
     );
 
-    UINT64 uploadSize{ 0ull };
-    device->GetCopyableFootprints(
-        &m_ResourceDesc,
-        0, 1, 0,
-        nullptr, nullptr, nullptr,
-        &uploadSize
-    );
+    // subresource data for available mip levels
+    UINT subResourceCount{ mipLevels };
+    std::vector<D3D12_SUBRESOURCE_DATA> subResources{ subResourceCount };
+
+    for ( UINT i{ 0u }; i < subResourceCount; ++i ) {
+        const DirectX::Image* img = mipChain.GetImage( i, 0ull, 0ull );
+        subResources[ i ].pData      = img->pixels;
+        subResources[ i ].RowPitch   = static_cast<LONG_PTR>( img->rowPitch );
+        subResources[ i ].SlicePitch = static_cast<LONG_PTR>( img->slicePitch );
+    }
+
+    UINT64 uploadSize{ 
+        GetRequiredIntermediateSize( m_D3D12Resource.Get(), 0u, subResourceCount ) 
+    };
 
     D3D12MA::ALLOCATION_DESC uploadAllocDesc = {};
     uploadAllocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-    auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadSize);
+    auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer( uploadSize );
 
     D3D12MA::Allocation* uploadAllocation{ nullptr };
     ComPtr<ID3D12Resource> uploadResource{ nullptr };
@@ -130,21 +161,16 @@ void Texture::Initialize(
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
             &uploadAllocation,
-            IID_PPV_ARGS(uploadResource.ReleaseAndGetAddressOf())
+            IID_PPV_ARGS( uploadResource.ReleaseAndGetAddressOf() )
         )
     );
-
-    D3D12_SUBRESOURCE_DATA textureData = {};
-    textureData.pData = textureBuffer;
-    textureData.RowPitch = width * 4;
-    textureData.SlicePitch = height * width * 4;
 
     UpdateSubresources(
         commandList.Get(),
         m_D3D12Resource.Get(),
         uploadResource.Get(),
-        0, 0, 1,
-        &textureData
+        0, 0, subResourceCount,
+        subResources.data()
     );
 
     CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -163,7 +189,7 @@ void Texture::Initialize(
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srvDesc.Format = m_ResourceDesc.Format;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = m_ResourceDesc.MipLevels;
+    srvDesc.Texture2D.MipLevels = mipLevels;
 
     auto& srvDscHeap = App.Renderer().GetSRVDescriptorHeap();
 

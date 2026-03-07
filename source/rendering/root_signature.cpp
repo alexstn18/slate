@@ -181,6 +181,8 @@ RootSignature& RootSignature::AddStaticSampler(u32 shaderRegister)
     sampler.ShaderRegister = shaderRegister;
     sampler.RegisterSpace = 0;
     sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    sampler.MinLOD = 0.0f;
+    sampler.MaxLOD = D3D12_FLOAT32_MAX;
 
     m_StaticSamplers.push_back( sampler );
     return *this;
