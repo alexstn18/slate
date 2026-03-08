@@ -20,10 +20,10 @@ struct finally
 {
     ~finally()
     {
-        stbi_image_free(ptr);
+        stbi_image_free( ptr );
     }
 
-    void* ptr = nullptr;
+    void* ptr{ nullptr };
 };
 
 Texture::Texture(const std::filesystem::path& path, const std::wstring& name)
@@ -137,7 +137,7 @@ void Texture::Initialize(
     std::vector<D3D12_SUBRESOURCE_DATA> subResources{ subResourceCount };
 
     for ( UINT i{ 0u }; i < subResourceCount; ++i ) {
-        const DirectX::Image* img = mipChain.GetImage( i, 0ull, 0ull );
+        const DirectX::Image* img{ mipChain.GetImage( i, 0ull, 0ull ) };
         subResources[ i ].pData      = img->pixels;
         subResources[ i ].RowPitch   = static_cast<LONG_PTR>( img->rowPitch );
         subResources[ i ].SlicePitch = static_cast<LONG_PTR>( img->slicePitch );
@@ -149,7 +149,7 @@ void Texture::Initialize(
 
     D3D12MA::ALLOCATION_DESC uploadAllocDesc = {};
     uploadAllocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-    auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer( uploadSize );
+    auto uploadDesc{ CD3DX12_RESOURCE_DESC::Buffer( uploadSize ) };
 
     D3D12MA::Allocation* uploadAllocation{ nullptr };
     ComPtr<ID3D12Resource> uploadResource{ nullptr };
@@ -173,11 +173,11 @@ void Texture::Initialize(
         subResources.data()
     );
 
-    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+    CD3DX12_RESOURCE_BARRIER barrier{ CD3DX12_RESOURCE_BARRIER::Transition(
         m_D3D12Resource.Get(),
         D3D12_RESOURCE_STATE_COPY_DEST,
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
-    );
+    ) };
 
     commandList->ResourceBarrier( 1, &barrier );
 
@@ -191,11 +191,11 @@ void Texture::Initialize(
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = mipLevels;
 
-    auto& srvDscHeap = App.Renderer().GetSRVDescriptorHeap();
+    auto& srvDscHeap{ App.Renderer().GetSRVDescriptorHeap() };
 
-    u32 slot = srvDscHeap.GetNextIndex();
-    m_SRVHandle = srvDscHeap.GetCPUHandle(slot);
-    m_GPUHandle = srvDscHeap.GetGPUHandle(slot);
+    u32 slot{ srvDscHeap.GetNextIndex() };
+    m_SRVHandle = srvDscHeap.GetCPUHandle( slot );
+    m_GPUHandle = srvDscHeap.GetGPUHandle( slot );
 
     device->CreateShaderResourceView(
         m_D3D12Resource.Get(),
