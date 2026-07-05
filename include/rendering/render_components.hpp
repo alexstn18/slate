@@ -26,9 +26,10 @@ namespace slate {
 		std::shared_ptr<Texture> Emissive{ nullptr };
 	
 		glm::vec4 albedoFactor{ 1.0f };
+		glm::vec3 emissiveFactor{ 1.0f };
+
 		float metallicFactor{ 1.0f };
 		float roughnessFactor{ 1.0f };
-		glm::vec3 emissiveFactor{ 1.0f };
 	};
 
 	struct LightweightMaterial {

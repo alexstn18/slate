@@ -124,7 +124,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>external/assimp/lib/;external/DirectXTex/Bin/Desktop_2026/$(Platform)/$(Configuration)/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>external/assimp/lib/;external/DirectXTex/Bin/$(Platform)/$(Configuration)/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc145-mt.lib;DirectXTex.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
@@ -150,7 +150,7 @@ xcopy /y /d /c /e /i "assets" "$(OutDir)assets"</Command>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>external/assimp/lib/;external/DirectXTex/Bin/Desktop_2026/$(Platform)/$(Configuration)/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>external/assimp/lib/;external/DirectXTex/Bin/$(Platform)/$(Configuration)/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc145-mt.lib;DirectXTex.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;winmm.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>

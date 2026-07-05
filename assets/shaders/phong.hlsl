@@ -141,10 +141,71 @@ float3 ComputeTBNNormal(PSInput input)
     return normalize(mul(TBN, tangentNormal));
 }
 
+float3 F_schlick(in float3 f0, in float LoH)
+{
+    return (f0 + (1. - f0) * pow(1. - LoH, 5.));
+}
+
+static const float PI = 3.14159265359f;
+static const float INVPI = 1.0f / PI;
+
+float DistributionGGX(float NoH, float a)
+{
+    float a2 = a * a;
+    float NdotH2 = NoH * NoH;
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.) + 1.);
+    denom = PI * denom * denom;
+    
+    return nom / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float k)
+{
+    float nom = NdotV;
+    float denom = NdotV * (1. - k) + k;
+    return nom / denom;
+}
+
+float GeometrySmith(float NoV, float NoL, float k)
+{
+    float ggx1 = GeometrySchlickGGX(NoV, k);
+    float ggx2 = GeometrySchlickGGX(NoL, k);
+    return ggx1 * ggx2;
+}
+
+float3 CalculateFRough(float3 F0, float3 V, float3 N, float roughness)
+{
+    float NdotV = saturate(dot(N, V));
+    float oneMinusRough = 1. - roughness;
+    float3 fresnel = F0 + (max(float3(oneMinusRough, oneMinusRough, oneMinusRough), F0) - F0) * pow(1. - NdotV, 5.);
+    return fresnel;
+}
+
 float4 LightingCalculation(PSInput input)
 {
     float3 N = ComputeTBNNormal(input);
-    float3 viewDir = normalize(CameraPos - input.WorldPos);
+    float3 V = normalize(CameraPos - input.WorldPos);
+
+    float3 albedo = SRGBToLinear(
+        albedoTexture.Sample(linearSampler, input.TexCoord).rgb
+    ) * AlbedoFactor.rgb;
+
+    float3 orm = occlusionTexture.Sample(linearSampler, input.TexCoord).rgb;
+
+    float ao = orm.r;
+
+    float roughness = max(
+        orm.g * RoughnessFactor,
+        0.04f
+    );
+
+    float metallic =
+    orm.b * MetallicFactor;
+
+    // reflectivity
+    float3 F0 = float3(0.04f, 0.04f, 0.04f);
+    F0 = lerp(F0, albedo, metallic);
 
     float3 accumulated = float3(0.0f, 0.0f, 0.0f);
 
@@ -152,51 +213,81 @@ float4 LightingCalculation(PSInput input)
     {
         Light light = lights[i];
 
-        float3 L = float3(0.0f, 0.0f, 0.0f);
+        float3 L;
         float attenuation = 1.0f;
-        float specExp = exp2(light.SpecularGlossiness * 8) + 2;
 
         if (light.Type == LIGHT_TYPE_DIRECTIONAL)
         {
             L = normalize(-light.Direction);
         }
-        else // LIGHT_TYPE_POINT
+        else
         {
             float3 toLight = light.Position - input.WorldPos;
             float dist = length(toLight);
-            L = normalize(toLight);
+
+            if (dist > light.Range)
+                continue;
+
+            L = toLight / dist;
 
             attenuation = saturate(1.0f - dist / light.Range);
             attenuation *= attenuation;
-
-            if (attenuation <= 0.01f)
-                continue;
         }
 
-        float3 ambient = light.Color * light.AmbientIntensity;
+        float3 H = normalize(V + L);
 
-        float lambert = dot(N, L);
-        float diff = max(lambert, 0.0f);
-        float3 diffuse = diff * light.Intensity * light.Color;
+        float NoV = saturate(dot(N, V));
+        float NoL = saturate(dot(N, L));
+        float NoH = saturate(dot(N, H));
+        float LoH = saturate(dot(L, H));
 
-        float3 halfway = normalize(L + viewDir);
-        float spec = pow(max(dot(N, halfway), 0.0f) * (lambert > 0), specExp) * light.SpecularGlossiness;
-        float3 specular = spec * light.Color;
+        if (NoL <= 0.0f)
+            continue;
 
-        accumulated += (ambient + diffuse + specular) * attenuation;
+        float alpha = roughness * roughness;
+
+        float D = DistributionGGX(NoH, alpha);
+
+        float k = (roughness + 1.0f);
+        k = (k * k) / 8.0f;
+
+        float G = GeometrySmith(NoV, NoL, k);
+
+        float3 F = F_schlick(F0, LoH);
+
+        float3 numerator = D * G * F;
+        float denominator = max(4.0f * NoV * NoL, 0.001f);
+
+        float3 specular = numerator / denominator;
+
+        float3 kS = F;
+        float3 kD = (1.0f - kS) * (1.0f - metallic);
+
+        float3 diffuse = kD * albedo * INVPI;
+
+        float3 radiance =
+            light.Color *
+            light.Intensity *
+            attenuation;
+
+        accumulated += (diffuse + specular) * radiance * NoL;
     }
 
-    float3 emission = SRGBToLinear(emissionTexture.Sample(linearSampler, input.TexCoord).rgb) * EmissiveFactor;
+    // replace with IBL
+    float3 ambient = 0.03f * albedo * ao;
 
-    return float4(accumulated + emission, 1.0f);
+    float3 emission =
+        SRGBToLinear(
+            emissionTexture.Sample(linearSampler, input.TexCoord).rgb
+        ) * EmissiveFactor;
+
+    return float4(accumulated + ambient + emission, 1.0f);
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    float3 albedo = SRGBToLinear(albedoTexture.Sample(linearSampler, input.TexCoord).rgb) * AlbedoFactor;
-
     float4 lighting = LightingCalculation(input);
-    float3 color = lighting.rgb * albedo;
+    float3 color = lighting.rgb;
 
     color *= Exposure;
 
